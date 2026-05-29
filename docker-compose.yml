@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL 설정
+  agenthub-db:
+    image: postgres:16-alpine
+    container_name: agenthub-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: agenthub_user
+      POSTGRES_PASSWORD: agenthub_password
+      POSTGRES_DB: agenthub
+      TZ: Asia/Seoul
+    volumes:
+      - ./docker_data/postgres:/var/lib/postgresql/data
+    restart: always
+
+  # 2. Redis 설정
+  agenthub-redis:
+    image: redis:7-alpine
+    container_name: agenthub-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - ./docker_data/redis:/data
+    restart: always
