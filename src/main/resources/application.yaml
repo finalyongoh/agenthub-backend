@@ -24,3 +24,10 @@ spring:
     redis:
       host: localhost
       port: 6379
+
+agenthub:
+  auth:
+    jwt:
+      issuer: agenthub
+      access-token-ttl: 1h
+      secret: ${AGENTHUB_JWT_SECRET:dev-only-change-this-secret-dev-only-change-this-secret}
