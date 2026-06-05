@@ -1,4 +1,12 @@
 package com.yongoh.agenthub_backend.github.dto;
 
-public record GithubReadmeDto(String path, String sha, String content) {
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
+public class GithubReadmeDto {
+	private String path;
+	private String sha;
+	private String content;
 }

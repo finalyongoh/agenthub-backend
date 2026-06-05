@@ -6,24 +6,28 @@ import java.util.List;
 import java.util.UUID;
 
 import com.yongoh.agenthub_backend.repository.model.AgentRepository;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
-public record RepositorySummaryDto(
-	UUID id,
-	String fullName,
-	String name,
-	String owner,
-	String description,
-	String htmlUrl,
-	String language,
-	List<String> topics,
-	int stars,
-	int forks,
-	Instant pushedAt,
-	int agentScore,
-	String agentCategory,
-	String readmeSummary,
-	boolean hasAnalysis
-) {
+@Getter
+@AllArgsConstructor
+public class RepositorySummaryDto {
+	private UUID id;
+	private String fullName;
+	private String name;
+	private String owner;
+	private String description;
+	private String htmlUrl;
+	private String language;
+	private List<String> topics;
+	private int stars;
+	private int forks;
+	private Instant pushedAt;
+	private int agentScore;
+	private String agentCategory;
+	private String readmeSummary;
+	private boolean hasAnalysis;
+
 	public static RepositorySummaryDto from(AgentRepository repository, boolean hasAnalysis) {
 		return new RepositorySummaryDto(
 			repository.getId(),

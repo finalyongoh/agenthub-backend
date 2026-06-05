@@ -24,7 +24,7 @@ public class GithubRepositorySearchService {
 		int perQueryLimit = Math.max(1, Math.min(100, limit));
 		for (String query : properties.getSync().getQueries()) {
 			for (GithubRepositoryDto repository : githubClient.searchRepositories(query, perQueryLimit)) {
-				repositories.putIfAbsent(repository.fullName(), repository);
+				repositories.putIfAbsent(repository.getFullName(), repository);
 				if (repositories.size() >= limit) {
 					return List.copyOf(repositories.values());
 				}

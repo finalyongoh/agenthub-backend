@@ -124,27 +124,27 @@ public class AgentRepository {
 	}
 
 	public void updateMetadata(GithubRepositoryDto dto) {
-		this.githubId = dto.githubId();
-		this.fullName = dto.fullName();
-		this.owner = dto.owner();
-		this.name = dto.name();
-		this.description = dto.description();
-		this.htmlUrl = dto.htmlUrl();
-		this.cloneUrl = dto.cloneUrl();
-		this.homepage = dto.homepage();
-		this.defaultBranch = dto.defaultBranch();
-		this.language = dto.language();
-		this.topics = String.join(",", dto.topics());
-		this.stars = dto.stars();
-		this.forks = dto.forks();
-		this.watchers = dto.watchers();
-		this.openIssues = dto.openIssues();
-		this.license = dto.license();
-		this.pushedAt = dto.pushedAt();
-		this.githubCreatedAt = dto.githubCreatedAt();
-		this.githubUpdatedAt = dto.githubUpdatedAt();
-		this.archived = dto.archived();
-		this.fork = dto.fork();
+		this.githubId = dto.getGithubId();
+		this.fullName = dto.getFullName();
+		this.owner = dto.getOwner();
+		this.name = dto.getName();
+		this.description = dto.getDescription();
+		this.htmlUrl = dto.getHtmlUrl();
+		this.cloneUrl = dto.getCloneUrl();
+		this.homepage = dto.getHomepage();
+		this.defaultBranch = dto.getDefaultBranch();
+		this.language = dto.getLanguage();
+		this.topics = String.join(",", dto.getTopics());
+		this.stars = dto.getStars();
+		this.forks = dto.getForks();
+		this.watchers = dto.getWatchers();
+		this.openIssues = dto.getOpenIssues();
+		this.license = dto.getLicense();
+		this.pushedAt = dto.getPushedAt();
+		this.githubCreatedAt = dto.getGithubCreatedAt();
+		this.githubUpdatedAt = dto.getGithubUpdatedAt();
+		this.archived = dto.isArchived();
+		this.fork = dto.isFork();
 	}
 
 	public void markReadmeFetched() {

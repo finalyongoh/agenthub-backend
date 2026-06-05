@@ -5,8 +5,6 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class GithubSyncResponse {
-	private String jobName;
-	private Long jobExecutionId;
-	private String status;
+public class UnreadNotificationCountResponse {
+	private long count;
 }

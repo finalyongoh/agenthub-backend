@@ -7,8 +7,8 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class BatchSyncLogListResponse {
-	private List<BatchSyncLogDto> items;
+public class RepositoryBookmarkListResponse {
+	private List<RepositoryBookmarkDto> items;
 	private int page;
 	private int limit;
 	private long total;

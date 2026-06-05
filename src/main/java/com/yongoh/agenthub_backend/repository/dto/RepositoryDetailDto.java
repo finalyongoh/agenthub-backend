@@ -7,30 +7,34 @@ import java.util.UUID;
 import com.yongoh.agenthub_backend.repository.model.AgentRepository;
 import com.yongoh.agenthub_backend.repository.model.RepositoryAnalysis;
 import com.yongoh.agenthub_backend.repository.model.RepositoryReadme;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
-public record RepositoryDetailDto(
-	UUID id,
-	String fullName,
-	String name,
-	String owner,
-	String description,
-	String htmlUrl,
-	String cloneUrl,
-	String homepage,
-	String language,
-	List<String> topics,
-	int stars,
-	int forks,
-	int watchers,
-	int openIssues,
-	String license,
-	Instant pushedAt,
-	int agentScore,
-	String agentCategory,
-	String readmeSummary,
-	String readmePreview,
-	String analysisStatus
-) {
+@Getter
+@AllArgsConstructor
+public class RepositoryDetailDto {
+	private UUID id;
+	private String fullName;
+	private String name;
+	private String owner;
+	private String description;
+	private String htmlUrl;
+	private String cloneUrl;
+	private String homepage;
+	private String language;
+	private List<String> topics;
+	private int stars;
+	private int forks;
+	private int watchers;
+	private int openIssues;
+	private String license;
+	private Instant pushedAt;
+	private int agentScore;
+	private String agentCategory;
+	private String readmeSummary;
+	private String readmePreview;
+	private String analysisStatus;
+
 	public static RepositoryDetailDto from(AgentRepository repository, RepositoryReadme readme, RepositoryAnalysis analysis) {
 		RepositorySummaryDto summary = RepositorySummaryDto.from(repository, analysis != null);
 		String content = readme == null || readme.getContent() == null ? "" : readme.getContent();
@@ -45,7 +49,7 @@ public record RepositoryDetailDto(
 			repository.getCloneUrl(),
 			repository.getHomepage(),
 			repository.getLanguage(),
-			summary.topics(),
+			summary.getTopics(),
 			repository.getStars(),
 			repository.getForks(),
 			repository.getWatchers(),
