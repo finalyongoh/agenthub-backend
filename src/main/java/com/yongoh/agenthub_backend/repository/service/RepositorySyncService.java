@@ -1,6 +1,7 @@
 package com.yongoh.agenthub_backend.repository.service;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ public class RepositorySyncService {
 	private final ReadmeSummaryGenerator summaryGenerator;
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
+	private final RepositoryNotificationService notificationService;
 	private final GithubProperties properties;
 
 	public RepositorySyncService(
@@ -39,6 +41,7 @@ public class RepositorySyncService {
 		ReadmeSummaryGenerator summaryGenerator,
 		AgentRepositoryJpaRepository repositoryJpaRepository,
 		RepositoryReadmeJpaRepository readmeJpaRepository,
+		RepositoryNotificationService notificationService,
 		GithubProperties properties
 	) {
 		this.searchService = searchService;
@@ -48,6 +51,7 @@ public class RepositorySyncService {
 		this.summaryGenerator = summaryGenerator;
 		this.repositoryJpaRepository = repositoryJpaRepository;
 		this.readmeJpaRepository = readmeJpaRepository;
+		this.notificationService = notificationService;
 		this.properties = properties;
 	}
 
@@ -64,12 +68,8 @@ public class RepositorySyncService {
 	public void fetchReadmes(List<AgentRepository> repositories, boolean force, SyncStatistics statistics) {
 		for (AgentRepository repository : repositories) {
 			try {
-				if (!force && readmeJpaRepository.findByRepository(repository).isPresent()) {
-					statistics.incrementSkippedCount();
-					continue;
-				}
 				readmeService.findReadme(repository)
-					.ifPresentOrElse(readme -> saveReadme(repository, readme, statistics), statistics::incrementSkippedCount);
+					.ifPresentOrElse(readme -> saveReadme(repository, readme, force, statistics), statistics::incrementSkippedCount);
 			} catch (GithubApiException exception) {
 				if (exception.isAuthenticationError()) {
 					throw exception;
@@ -100,31 +100,62 @@ public class RepositorySyncService {
 	}
 
 	private AgentRepository upsert(GithubRepositoryDto dto, SyncStatistics statistics) {
-		AgentRepository repository = repositoryJpaRepository.findByGithubId(dto.githubId())
+		AgentRepository repository = repositoryJpaRepository.findByGithubId(dto.getGithubId())
 			.orElseGet(() -> AgentRepository.create(dto));
+		if (repository.getCreatedAt() != null) {
+			notifyMetadataChanges(repository, dto);
+		}
 		repository.updateMetadata(dto);
 		statistics.incrementSavedCount();
 		return repositoryJpaRepository.save(repository);
 	}
 
-	private void saveReadme(AgentRepository repository, GithubReadmeDto readmeDto, SyncStatistics statistics) {
+	private void saveReadme(AgentRepository repository, GithubReadmeDto readmeDto, boolean force, SyncStatistics statistics) {
 		RepositoryReadme readme = readmeJpaRepository.findByRepository(repository)
 			.orElse(null);
-		if (readme != null && readme.hasSameSha(readmeDto.sha())) {
+		if (!force && readme != null && readme.hasSameSha(readmeDto.getSha())) {
 			statistics.incrementSkippedCount();
 			return;
 		}
-		String content = readmeDto.content();
+		String oldSha = readme == null ? null : readme.getSha();
+		String content = readmeDto.getContent();
 		int originalLength = content == null ? 0 : content.length();
 		boolean truncated = originalLength > properties.getSync().getReadmeMaxLength();
 		String savedContent = truncated ? content.substring(0, properties.getSync().getReadmeMaxLength()) : content;
 		if (readme == null) {
-			readme = RepositoryReadme.create(repository, readmeDto.path(), readmeDto.sha(), savedContent, originalLength, truncated);
+			readme = RepositoryReadme.create(repository, readmeDto.getPath(), readmeDto.getSha(), savedContent, originalLength, truncated);
 		} else {
-			readme.update(readmeDto.path(), readmeDto.sha(), savedContent, originalLength, truncated);
+			readme.update(readmeDto.getPath(), readmeDto.getSha(), savedContent, originalLength, truncated);
 		}
 		readmeJpaRepository.save(readme);
 		repository.markReadmeFetched();
+		if (oldSha != null && readmeDto.getSha() != null && !oldSha.equals(readmeDto.getSha())) {
+			notificationService.notifyChanged(repository, "readme_changed", "readmeSha", oldSha, readmeDto.getSha(), oldSha, readmeDto.getSha());
+		}
 		statistics.incrementReadmeFetchedCount();
+	}
+
+	private void notifyMetadataChanges(AgentRepository repository, GithubRepositoryDto dto) {
+		notifyIfChanged(repository, "description", repository.getDescription(), dto.getDescription());
+		notifyIfChanged(repository, "topics", repository.getTopics(), String.join(",", dto.getTopics()));
+		notifyIfChanged(repository, "language", repository.getLanguage(), dto.getLanguage());
+		notifyIfChanged(repository, "stars", String.valueOf(repository.getStars()), String.valueOf(dto.getStars()));
+		notifyIfChanged(repository, "forks", String.valueOf(repository.getForks()), String.valueOf(dto.getForks()));
+		notifyIfChanged(repository, "watchers", String.valueOf(repository.getWatchers()), String.valueOf(dto.getWatchers()));
+		notifyIfChanged(repository, "openIssues", String.valueOf(repository.getOpenIssues()), String.valueOf(dto.getOpenIssues()));
+		notifyIfChanged(repository, "license", repository.getLicense(), dto.getLicense());
+		notifyIfChanged(repository, "pushedAt", String.valueOf(repository.getPushedAt()), String.valueOf(dto.getPushedAt()));
+		notifyIfChanged(repository, "homepage", repository.getHomepage(), dto.getHomepage());
+		notifyIfChanged(repository, "defaultBranch", repository.getDefaultBranch(), dto.getDefaultBranch());
+	}
+
+	private void notifyIfChanged(AgentRepository repository, String fieldName, String oldValue, String newValue) {
+		if (!Objects.equals(normalize(oldValue), normalize(newValue))) {
+			notificationService.notifyChanged(repository, "metadata_changed", fieldName, oldValue, newValue, null, newValue);
+		}
+	}
+
+	private String normalize(String value) {
+		return value == null ? "" : value;
 	}
 }

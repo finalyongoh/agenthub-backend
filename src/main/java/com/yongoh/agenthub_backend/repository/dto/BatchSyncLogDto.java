@@ -4,21 +4,25 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.yongoh.agenthub_backend.repository.model.BatchSyncLog;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
-public record BatchSyncLogDto(
-	UUID id,
-	String jobName,
-	String status,
-	Instant startedAt,
-	Instant endedAt,
-	int searchedCount,
-	int savedCount,
-	int readmeFetchedCount,
-	int agentRelatedCount,
-	int skippedCount,
-	int failedCount,
-	String errorMessage
-) {
+@Getter
+@AllArgsConstructor
+public class BatchSyncLogDto {
+	private UUID id;
+	private String jobName;
+	private String status;
+	private Instant startedAt;
+	private Instant endedAt;
+	private int searchedCount;
+	private int savedCount;
+	private int readmeFetchedCount;
+	private int agentRelatedCount;
+	private int skippedCount;
+	private int failedCount;
+	private String errorMessage;
+
 	public static BatchSyncLogDto from(BatchSyncLog log) {
 		return new BatchSyncLogDto(
 			log.getId(),

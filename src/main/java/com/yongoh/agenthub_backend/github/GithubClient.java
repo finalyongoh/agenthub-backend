@@ -1,8 +1,10 @@
 package com.yongoh.agenthub_backend.github;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,7 +49,7 @@ public class GithubClient {
 			for (Object item : itemList) {
 				if (item instanceof Map<?, ?> itemMap) {
 					GithubRepositoryDto repository = toRepositoryDto(itemMap);
-					if (!repository.archived() && !repository.fork() && repository.stars() >= properties.getSync().getMinStars()) {
+					if (!repository.isArchived() && !repository.isFork() && repository.getStars() >= properties.getSync().getMinStars()) {
 						repositories.add(repository);
 					}
 				}
@@ -72,15 +74,27 @@ public class GithubClient {
 
 	private Optional<GithubReadmeDto> getReadme(String path, String fallbackPath) {
 		try {
-			String content = get(URI.create(path), "application/vnd.github.raw+json", String.class);
-			String sha = "";
-			return Optional.of(new GithubReadmeDto(fallbackPath, sha, content));
+			Map<String, Object> metadata = get(URI.create(path), "application/vnd.github+json", Map.class);
+			String readmePath = textOrDefault(metadata, "path", fallbackPath);
+			String sha = textOrNull(metadata, "sha");
+			String content = getReadmeContent(path, metadata);
+			return Optional.of(new GithubReadmeDto(readmePath, sha, content));
 		} catch (GithubApiException exception) {
 			if (exception.isNotFound()) {
 				return Optional.empty();
 			}
 			throw exception;
 		}
+	}
+
+	private String getReadmeContent(String path, Map<String, Object> metadata) {
+		String encodedContent = textOrNull(metadata, "content");
+		String encoding = textOrNull(metadata, "encoding");
+		if (StringUtils.hasText(encodedContent) && "base64".equalsIgnoreCase(encoding)) {
+			String normalized = encodedContent.replaceAll("\\s", "");
+			return new String(Base64.getDecoder().decode(normalized), StandardCharsets.UTF_8);
+		}
+		return get(URI.create(path), "application/vnd.github.raw+json", String.class);
 	}
 
 	private <T> T get(URI uri, String accept, Class<T> responseType) {
@@ -143,6 +157,11 @@ public class GithubClient {
 	private String textOrNull(Map<?, ?> node, String field) {
 		Object value = node.get(field);
 		return value == null ? null : String.valueOf(value);
+	}
+
+	private String textOrDefault(Map<?, ?> node, String field, String defaultValue) {
+		String value = textOrNull(node, field);
+		return StringUtils.hasText(value) ? value : defaultValue;
 	}
 
 	private Instant instantOrNull(Map<?, ?> node, String field) {
