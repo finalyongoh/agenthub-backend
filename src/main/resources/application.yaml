@@ -18,6 +18,11 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false
 
   # Redis 연동 설정
   data:
@@ -31,3 +36,28 @@ agenthub:
       issuer: agenthub
       access-token-ttl: 1h
       secret: ${AGENTHUB_JWT_SECRET:dev-only-change-this-secret-dev-only-change-this-secret}
+
+github:
+  api:
+    base-url: "https://api.github.com"
+    token: "${GITHUB_TOKEN:}"
+    version: "2022-11-28"
+  sync:
+    enabled: true
+    cron: "0 0 3 * * *"
+    max-repositories-per-run: 100
+    readme-max-length: 100000
+    search-sort: "stars"
+    search-order: "desc"
+    min-stars: 20
+    retry-count: 2
+    queries:
+      - '"ai agent" in:readme stars:>20'
+      - '"llm agent" in:readme stars:>20'
+      - '"multi-agent" in:readme stars:>20'
+      - '"agent framework" in:readme stars:>20'
+      - '"model context protocol" in:readme stars:>20'
+      - '"coding agent" in:readme stars:>20'
+
+agent:
+  score-threshold: 8

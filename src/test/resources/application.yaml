@@ -15,6 +15,11 @@ spring:
     redis:
       repositories:
         enabled: false
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false
 
 agenthub:
   auth:
@@ -22,3 +27,7 @@ agenthub:
       issuer: agenthub-test
       access-token-ttl: 1h
       secret: test-jwt-secret-test-jwt-secret-test-jwt-secret
+
+github:
+  sync:
+    enabled: false

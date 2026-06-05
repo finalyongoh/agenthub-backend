@@ -16,6 +16,7 @@ import com.yongoh.agenthub_backend.community.model.RepositoryDiscussion;
 import com.yongoh.agenthub_backend.community.repository.PostRepository;
 import com.yongoh.agenthub_backend.community.repository.RepositoryDiscussionRepository;
 import com.yongoh.agenthub_backend.global.exception.GlobalExceptionHandler.ApiException;
+import com.yongoh.agenthub_backend.repository.repository.AgentRepositoryJpaRepository;
 import com.yongoh.agenthub_backend.user.model.User;
 import com.yongoh.agenthub_backend.user.repository.UserRepository;
 
@@ -24,15 +25,18 @@ public class CommunityService {
 	private final PostRepository postRepository;
 	private final RepositoryDiscussionRepository discussionRepository;
 	private final UserRepository userRepository;
+	private final AgentRepositoryJpaRepository agentRepositoryJpaRepository;
 
 	public CommunityService(
 		PostRepository postRepository,
 		RepositoryDiscussionRepository discussionRepository,
-		UserRepository userRepository
+		UserRepository userRepository,
+		AgentRepositoryJpaRepository agentRepositoryJpaRepository
 	) {
 		this.postRepository = postRepository;
 		this.discussionRepository = discussionRepository;
 		this.userRepository = userRepository;
+		this.agentRepositoryJpaRepository = agentRepositoryJpaRepository;
 	}
 
 	@Transactional
@@ -65,6 +69,7 @@ public class CommunityService {
 	public RepositoryDiscussionDto createDiscussion(UUID userId, UUID repositoryId, CommunityCreateRequest request) {
 		validateRequest(request);
 		User user = findActiveUser(userId);
+		validateCollectedRepository(repositoryId);
 		RepositoryDiscussion discussion = RepositoryDiscussion.create(
 			user,
 			repositoryId,
@@ -76,6 +81,7 @@ public class CommunityService {
 
 	@Transactional(readOnly = true)
 	public List<RepositoryDiscussionDto> findDiscussions(UUID repositoryId) {
+		validateCollectedRepository(repositoryId);
 		return discussionRepository.findByRepositoryIdOrderByCreatedAtDesc(repositoryId)
 			.stream()
 			.map(RepositoryDiscussionDto::from)
@@ -85,6 +91,7 @@ public class CommunityService {
 	@Transactional
 	public RepositoryDiscussionDto deleteDiscussion(UUID userId, UUID repositoryId, UUID discussionId) {
 		findActiveUser(userId);
+		validateCollectedRepository(repositoryId);
 		RepositoryDiscussion discussion = discussionRepository.findById(discussionId)
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "토론 글을 찾을 수 없습니다."));
 		if (!discussion.getRepositoryId().equals(repositoryId)) {
@@ -107,6 +114,12 @@ public class CommunityService {
 	private void validateRequest(CommunityCreateRequest request) {
 		if (request == null || !StringUtils.hasText(request.getTitle()) || !StringUtils.hasText(request.getBody())) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_001", "필수 입력값이 누락되었습니다.");
+		}
+	}
+
+	private void validateCollectedRepository(UUID repositoryId) {
+		if (!agentRepositoryJpaRepository.existsById(repositoryId)) {
+			throw new ApiException(HttpStatus.NOT_FOUND, "REPOSITORY_404", "수집된 레포지토리를 찾을 수 없습니다.");
 		}
 	}
 
