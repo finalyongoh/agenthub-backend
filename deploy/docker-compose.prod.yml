@@ -1,0 +1,81 @@
+name: agenthub
+
+services:
+  agenthub-postgres:
+    image: postgres:16-alpine
+    container_name: agenthub-postgres
+    environment:
+      POSTGRES_DB: agenthub
+      POSTGRES_USER: agenthub_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Seoul
+    volumes:
+      - agenthub_postgres_data:/var/lib/postgresql/data
+    networks:
+      - agenthub_internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agenthub_user -d agenthub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  agenthub-redis:
+    image: redis:7-alpine
+    container_name: agenthub-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - agenthub_redis_data:/data
+    networks:
+      - agenthub_internal
+    restart: unless-stopped
+
+  agenthub-backend:
+    container_name: agenthub-backend
+    build:
+      context: ./agenthub-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://agenthub-postgres:5432/agenthub
+      SPRING_DATASOURCE_USERNAME: agenthub_user
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: agenthub-redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_BATCH_JOB_ENABLED: "false"
+      AGENTHUB_JWT_SECRET: ${AGENTHUB_JWT_SECRET}
+      GITHUB_TOKEN: ${GITHUB_TOKEN_FOR_APP:-}
+      TZ: Asia/Seoul
+    depends_on:
+      agenthub-postgres:
+        condition: service_healthy
+      agenthub-redis:
+        condition: service_started
+    expose:
+      - "8080"
+    networks:
+      - agenthub_internal
+    restart: unless-stopped
+
+  agenthub-frontend:
+    container_name: agenthub-frontend
+    build:
+      context: ./agenthub-frontend
+    depends_on:
+      - agenthub-backend
+    expose:
+      - "80"
+    networks:
+      - agenthub_internal
+      - web_network
+    restart: unless-stopped
+
+volumes:
+  agenthub_postgres_data:
+  agenthub_redis_data:
+
+networks:
+  agenthub_internal:
+    name: agenthub_internal
+  web_network:
+    external: true

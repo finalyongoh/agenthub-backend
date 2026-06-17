@@ -1,0 +1,82 @@
+name: Deploy AgentHub
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          path: agenthub-backend
+
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+        with:
+          repository: ooosj/agenthub-frontend
+          ref: main
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          path: agenthub-frontend
+
+      - name: Build backend
+        working-directory: agenthub-backend
+        run: |
+          chmod +x ./gradlew
+          ./gradlew test bootJar --no-daemon
+
+      - name: Build frontend
+        working-directory: agenthub-frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Prepare deploy bundle
+        run: |
+          mkdir -p bundle
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude '.gradle' \
+            --exclude 'build' \
+            --exclude 'docker_data' \
+            agenthub-backend bundle/
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            agenthub-frontend bundle/
+          cp agenthub-backend/deploy/docker-compose.prod.yml bundle/docker-compose.prod.yml
+
+      - name: Upload bundle
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          source: "bundle/*"
+          target: ${{ secrets.DEPLOY_PATH }}
+          strip_components: 1
+          rm: true
+
+      - name: Restart containers
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            set -eu
+            mkdir -p "${{ secrets.DEPLOY_PATH }}"
+            cd "${{ secrets.DEPLOY_PATH }}"
+            cat > .env <<'EOF'
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            AGENTHUB_JWT_SECRET=${{ secrets.AGENTHUB_JWT_SECRET }}
+            GITHUB_TOKEN_FOR_APP=${{ secrets.GITHUB_TOKEN_FOR_APP }}
+            EOF
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker image prune -f

@@ -1,0 +1,7 @@
+.git
+.gradle
+build
+docker_data
+.idea
+*.iml
+.DS_Store
