@@ -18,7 +18,7 @@ DEPLOY_PATH=/home/wolyong/deploy/agenthub
 
 POSTGRES_PASSWORD=<database password>
 AGENTHUB_JWT_SECRET=<long random secret>
-GITHUB_TOKEN_FOR_APP=<optional GitHub API token>
+APP_GITHUB_TOKEN=<optional GitHub API token used by the app>
 ```
 
 ## First Server Setup

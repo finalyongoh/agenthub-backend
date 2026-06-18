@@ -7,6 +7,7 @@ on:
 
 jobs:
   deploy:
+    if: github.repository_owner == 'finalyongoh'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout backend
@@ -17,7 +18,7 @@ jobs:
       - name: Checkout frontend
         uses: actions/checkout@v4
         with:
-          repository: ooosj/agenthub-frontend
+          repository: finalyongoh/agenthub-frontend
           ref: main
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           path: agenthub-frontend
@@ -76,7 +77,7 @@ jobs:
             cat > .env <<'EOF'
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             AGENTHUB_JWT_SECRET=${{ secrets.AGENTHUB_JWT_SECRET }}
-            GITHUB_TOKEN_FOR_APP=${{ secrets.GITHUB_TOKEN_FOR_APP }}
+            GITHUB_TOKEN_FOR_APP=${{ secrets.APP_GITHUB_TOKEN }}
             EOF
             docker compose -f docker-compose.prod.yml up -d --build
             docker image prune -f
