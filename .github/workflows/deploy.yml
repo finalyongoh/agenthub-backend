@@ -59,7 +59,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           source: "bundle/*"
-          target: ${{ secrets.DEPLOY_PATH }}
+          target: ${{ secrets.DEPLOY_PATH }}-incoming-${{ github.run_id }}
           strip_components: 1
           rm: true
 
@@ -72,12 +72,19 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -eu
-            mkdir -p "${{ secrets.DEPLOY_PATH }}"
-            cd "${{ secrets.DEPLOY_PATH }}"
-            cat > .env <<'EOF'
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            AGENTHUB_JWT_SECRET=${{ secrets.AGENTHUB_JWT_SECRET }}
-            GITHUB_TOKEN_FOR_APP=${{ secrets.APP_GITHUB_TOKEN }}
-            EOF
-            docker compose -f docker-compose.prod.yml up -d --build
-            docker image prune -f
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            INCOMING_PATH="${{ secrets.DEPLOY_PATH }}-incoming-${{ github.run_id }}"
+            (
+              flock -w 600 9
+              mkdir -p "$DEPLOY_PATH"
+              cp -a "$INCOMING_PATH"/. "$DEPLOY_PATH"/
+              rm -rf "$INCOMING_PATH"
+              cd "$DEPLOY_PATH"
+              {
+                printf 'POSTGRES_PASSWORD=%s\n' '${{ secrets.POSTGRES_PASSWORD }}'
+                printf 'AGENTHUB_JWT_SECRET=%s\n' '${{ secrets.AGENTHUB_JWT_SECRET }}'
+                printf 'GITHUB_TOKEN_FOR_APP=%s\n' '${{ secrets.APP_GITHUB_TOKEN }}'
+              } > .env
+              docker compose -f docker-compose.prod.yml up -d --build
+              docker image prune -f
+            ) 9>/tmp/agenthub-deploy.lock
