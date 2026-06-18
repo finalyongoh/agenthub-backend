@@ -4,6 +4,8 @@ services:
   agenthub-postgres:
     image: postgres:16-alpine
     container_name: agenthub-postgres
+    ports:
+      - "127.0.0.1:15432:5432"
     environment:
       POSTGRES_DB: agenthub
       POSTGRES_USER: agenthub_user
