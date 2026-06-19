@@ -24,6 +24,8 @@ import jakarta.persistence.criteria.Predicate;
 
 @Service
 public class RepositoryQueryService {
+	private static final int MAX_PAGE_SIZE = 15;
+
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
 	private final RepositoryAnalysisJpaRepository analysisJpaRepository;
@@ -40,10 +42,11 @@ public class RepositoryQueryService {
 
 	@Transactional(readOnly = true)
 	public RepositoryListResponse findRepositories(String category, String language, Integer minStars, String sort, String order, int page, int limit) {
-		PageRequest pageRequest = PageRequest.of(Math.max(page - 1, 0), Math.max(limit, 1), sort(sort, order));
+		int pageNumber = Math.max(page - 1, 0);
+		int pageSize = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
+		PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, sort(sort, order));
 		Specification<AgentRepository> specification = (root, query, builder) -> {
 			Predicate predicate = builder.and(
-				builder.isTrue(root.get("agentRelated")),
 				builder.isFalse(root.get("archived")),
 				builder.isFalse(root.get("fork"))
 			);
@@ -63,8 +66,8 @@ public class RepositoryQueryService {
 			repositories.stream()
 				.map(repository -> RepositorySummaryDto.from(repository, analysisJpaRepository.existsByRepository(repository)))
 				.toList(),
-			page,
-			limit,
+			pageNumber + 1,
+			pageSize,
 			repositories.getTotalElements()
 		);
 	}
