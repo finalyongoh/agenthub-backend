@@ -84,4 +84,28 @@ class AnalysisServiceTest {
         assertThat(failed.getResultJson()).isEqualTo(resultJson); // should preserve old value based on updateStatus implementation
         assertThat(failed.getErrorMessage()).isEqualTo("Something went wrong");
     }
+
+    @Test
+    void testRequestAnalysisFailureFlow() {
+        UUID repositoryId = UUID.randomUUID();
+        UUID snapshotId = UUID.randomUUID();
+        String commitSha = "error-commit";
+        String githubUrl = "https://github.com/example/repo-err";
+
+        // Stub the client to throw an exception
+        org.mockito.Mockito.doThrow(new RuntimeException("API connection failure"))
+            .when(agentTraceClient).triggerAnalysis(any(), any(), any(), any(), any());
+
+        // Request analysis and expect exception
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> 
+            analysisService.requestAnalysis(repositoryId, snapshotId, commitSha, githubUrl)
+        ).isInstanceOf(RuntimeException.class)
+         .hasMessageContaining("API connection failure");
+
+        // Verify that status in DB was updated to FAILED with the error message
+        RepositoryAnalysis analysis = repositoryAnalysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId).orElse(null);
+        assertThat(analysis).isNotNull();
+        assertThat(analysis.getStatus()).isEqualTo("FAILED");
+        assertThat(analysis.getErrorMessage()).isEqualTo("API connection failure");
+    }
 }

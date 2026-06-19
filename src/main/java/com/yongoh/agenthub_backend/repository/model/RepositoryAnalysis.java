@@ -17,7 +17,10 @@ public class RepositoryAnalysis {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID analysisId;
 
+    @Column(nullable = false)
     private UUID repositoryId;
+
+    @Column(nullable = false)
     private UUID snapshotId;
 
     @Column(nullable = false)

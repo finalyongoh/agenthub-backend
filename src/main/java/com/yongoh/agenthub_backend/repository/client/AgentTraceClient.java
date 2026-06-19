@@ -6,10 +6,17 @@ import lombok.RequiredArgsConstructor;
 import java.util.Map;
 import java.util.UUID;
 
+import com.yongoh.agenthub_backend.global.config.AgentTraceProperties;
+
 @Component
-@RequiredArgsConstructor
 public class AgentTraceClient {
-    private final RestClient restClient = RestClient.builder().baseUrl("http://localhost:8000").build();
+    private final RestClient restClient;
+
+    public AgentTraceClient(AgentTraceProperties properties) {
+        this.restClient = RestClient.builder()
+            .baseUrl(properties.getBaseUrl())
+            .build();
+    }
 
     public void triggerAnalysis(UUID analysisId, UUID repositoryId, UUID snapshotId, String commitSha, String githubUrl) {
         restClient.post()

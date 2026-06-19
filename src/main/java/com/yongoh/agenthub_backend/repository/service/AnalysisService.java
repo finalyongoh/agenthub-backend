@@ -5,6 +5,8 @@ import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepos
 import com.yongoh.agenthub_backend.repository.client.AgentTraceClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import lombok.RequiredArgsConstructor;
 import java.util.UUID;
 
@@ -14,16 +16,28 @@ public class AnalysisService {
     private final RepositoryAnalysisRepository repository;
     private final AgentTraceClient client;
 
+    @Autowired
+    @Lazy
+    private AnalysisService self;
+
     @Transactional
-    public RepositoryAnalysis requestAnalysis(UUID repositoryId, UUID snapshotId, String commitSha, String githubUrl) {
+    public RepositoryAnalysis saveQueuedAnalysis(UUID repositoryId, UUID snapshotId) {
         RepositoryAnalysis analysis = RepositoryAnalysis.builder()
             .repositoryId(repositoryId)
             .snapshotId(snapshotId)
             .status("QUEUED")
             .build();
-        
-        RepositoryAnalysis saved = repository.save(analysis);
-        client.triggerAnalysis(saved.getAnalysisId(), repositoryId, snapshotId, commitSha, githubUrl);
+        return repository.save(analysis);
+    }
+
+    public RepositoryAnalysis requestAnalysis(UUID repositoryId, UUID snapshotId, String commitSha, String githubUrl) {
+        RepositoryAnalysis saved = self.saveQueuedAnalysis(repositoryId, snapshotId);
+        try {
+            client.triggerAnalysis(saved.getAnalysisId(), repositoryId, snapshotId, commitSha, githubUrl);
+        } catch (Exception e) {
+            self.updateStatus(saved.getAnalysisId(), "FAILED", null, e.getMessage());
+            throw e;
+        }
         return saved;
     }
 
