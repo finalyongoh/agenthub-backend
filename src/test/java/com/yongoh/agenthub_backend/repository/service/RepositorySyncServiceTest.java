@@ -37,7 +37,7 @@ class RepositorySyncServiceTest {
 	private final GithubFileTreeService fileTreeService = mock(GithubFileTreeService.class);
 	private final AgentRepositoryScorer scorer = mock(AgentRepositoryScorer.class);
 	private final AgentCategoryClassifier classifier = mock(AgentCategoryClassifier.class);
-	private final ReadmeSummaryGenerator summaryGenerator = mock(ReadmeSummaryGenerator.class);
+	private final AgentTraceSummaryClient summaryClient = mock(AgentTraceSummaryClient.class);
 	private final AgentRepositoryJpaRepository repositoryJpaRepository = mock(AgentRepositoryJpaRepository.class);
 	private final RepositoryReadmeJpaRepository readmeJpaRepository = mock(RepositoryReadmeJpaRepository.class);
 	private final RepositoryFileTreeJpaRepository fileTreeJpaRepository = mock(RepositoryFileTreeJpaRepository.class);
@@ -51,7 +51,7 @@ class RepositorySyncServiceTest {
 		fileTreeService,
 		scorer,
 		classifier,
-		summaryGenerator,
+		summaryClient,
 		repositoryJpaRepository,
 		readmeJpaRepository,
 		fileTreeJpaRepository,
@@ -112,6 +112,59 @@ class RepositorySyncServiceTest {
 		service.fetchReadmes(List.of(repository), false, new SyncStatistics());
 
 		verify(analysisJpaRepository).save(any(RepositoryAnalysis.class));
+	}
+
+	@Test
+	void scoreRepositoriesStoresAgentTraceReadmeSummary() {
+		AgentRepository repository = AgentRepository.create(repositoryDto(5L, "acme/summary-agent"));
+		var readme = com.yongoh.agenthub_backend.repository.model.RepositoryReadme.create(
+			repository,
+			"README.md",
+			"readme-sha",
+			"# Summary Agent",
+			15,
+			false
+		);
+		RepositoryFileTree fileTree = RepositoryFileTree.create(repository, "[{\"path\":\"README.md\",\"type\":\"file\"}]", 1);
+		when(readmeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(readme));
+		when(fileTreeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(fileTree));
+		when(scorer.score(repository, readme.getContent())).thenReturn(9);
+		when(scorer.isAgentRelated(9)).thenReturn(true);
+		when(classifier.classify(readme.getContent())).thenReturn("framework");
+		when(summaryClient.summarize(repository, readme, fileTree))
+			.thenReturn(new AgentTraceSummaryClient.RepositorySummaryResult(true, "AgentTrace summary", null));
+
+		service.scoreRepositories(List.of(repository), new SyncStatistics());
+
+		assertThat(repository.getReadmeSummary()).isEqualTo("AgentTrace summary");
+		assertThat(repository.isAgentRelated()).isTrue();
+		assertThat(repository.getAgentCategory()).isEqualTo("framework");
+	}
+
+	@Test
+	void scoreRepositoriesKeepsExistingSummaryWhenAgentTraceFails() {
+		AgentRepository repository = AgentRepository.create(repositoryDto(6L, "acme/existing-summary-agent"));
+		repository.updateScoring(7, true, "framework", "Existing summary");
+		var readme = com.yongoh.agenthub_backend.repository.model.RepositoryReadme.create(
+			repository,
+			"README.md",
+			"readme-sha",
+			"# Existing Summary Agent",
+			24,
+			false
+		);
+		RepositoryFileTree fileTree = RepositoryFileTree.create(repository, "[{\"path\":\"README.md\",\"type\":\"file\"}]", 1);
+		when(readmeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(readme));
+		when(fileTreeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(fileTree));
+		when(scorer.score(repository, readme.getContent())).thenReturn(9);
+		when(scorer.isAgentRelated(9)).thenReturn(true);
+		when(classifier.classify(readme.getContent())).thenReturn("framework");
+		when(summaryClient.summarize(repository, readme, fileTree))
+			.thenReturn(new AgentTraceSummaryClient.RepositorySummaryResult(false, null, "agenttrace failed"));
+
+		service.scoreRepositories(List.of(repository), new SyncStatistics());
+
+		assertThat(repository.getReadmeSummary()).isEqualTo("Existing summary");
 	}
 
 	private GithubRepositoryDto repositoryDto(Long id, String fullName) {

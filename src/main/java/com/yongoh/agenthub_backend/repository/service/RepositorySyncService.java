@@ -38,7 +38,7 @@ public class RepositorySyncService {
 	private final GithubFileTreeService fileTreeService;
 	private final AgentRepositoryScorer scorer;
 	private final AgentCategoryClassifier classifier;
-	private final ReadmeSummaryGenerator summaryGenerator;
+	private final AgentTraceSummaryClient summaryClient;
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
 	private final RepositoryFileTreeJpaRepository fileTreeJpaRepository;
@@ -52,7 +52,7 @@ public class RepositorySyncService {
 		GithubFileTreeService fileTreeService,
 		AgentRepositoryScorer scorer,
 		AgentCategoryClassifier classifier,
-		ReadmeSummaryGenerator summaryGenerator,
+		AgentTraceSummaryClient summaryClient,
 		AgentRepositoryJpaRepository repositoryJpaRepository,
 		RepositoryReadmeJpaRepository readmeJpaRepository,
 		RepositoryFileTreeJpaRepository fileTreeJpaRepository,
@@ -65,7 +65,7 @@ public class RepositorySyncService {
 		this.fileTreeService = fileTreeService;
 		this.scorer = scorer;
 		this.classifier = classifier;
-		this.summaryGenerator = summaryGenerator;
+		this.summaryClient = summaryClient;
 		this.repositoryJpaRepository = repositoryJpaRepository;
 		this.readmeJpaRepository = readmeJpaRepository;
 		this.fileTreeJpaRepository = fileTreeJpaRepository;
@@ -124,12 +124,29 @@ public class RepositorySyncService {
 				int score = scorer.score(repository, readme.getContent());
 				boolean agentRelated = scorer.isAgentRelated(score);
 				String category = agentRelated ? classifier.classify(readme.getContent()) : null;
-				String summary = summaryGenerator.generateReadmeSummary(readme.getContent(), repository.getDescription());
+				String summary = summarize(repository, readme, statistics);
 				repository.updateScoring(score, agentRelated, category, summary);
 				if (agentRelated) {
 					statistics.incrementAgentRelatedCount();
 				}
 			});
+		}
+	}
+
+	private String summarize(AgentRepository repository, RepositoryReadme readme, SyncStatistics statistics) {
+		try {
+			RepositoryFileTree fileTree = fileTreeJpaRepository.findByRepository(repository).orElse(null);
+			AgentTraceSummaryClient.RepositorySummaryResult result = summaryClient.summarize(repository, readme, fileTree);
+			if (result.completed()) {
+				return result.readmeSummary();
+			}
+			log.warn("AgentTrace summary failed: repository={}, error={}", repository.getFullName(), result.errorMessage());
+			statistics.incrementFailedCount();
+			return repository.getReadmeSummary();
+		} catch (AgentTraceSummaryException exception) {
+			log.warn("AgentTrace summary request failed: repository={}", repository.getFullName(), exception);
+			statistics.incrementFailedCount();
+			return repository.getReadmeSummary();
 		}
 	}
 
