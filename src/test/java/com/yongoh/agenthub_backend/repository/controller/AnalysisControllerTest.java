@@ -33,10 +33,10 @@ class AnalysisControllerTest {
         UUID analysisId = UUID.randomUUID();
         String requestBody = """
             {
-                "analysisId": "%s",
+                "analysis_id": "%s",
                 "status": "COMPLETED",
-                "resultJson": "{\\"result\\":\\"ok\\"}",
-                "errorMessage": null
+                "result_json": {"result":"ok"},
+                "error_message": null
             }
             """.formatted(analysisId);
 

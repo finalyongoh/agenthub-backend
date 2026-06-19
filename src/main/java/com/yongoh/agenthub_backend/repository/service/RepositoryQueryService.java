@@ -27,15 +27,18 @@ public class RepositoryQueryService {
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
 	private final RepositoryAnalysisRepository analysisRepository;
+	private final AnalysisService analysisService;
 
 	public RepositoryQueryService(
 		AgentRepositoryJpaRepository repositoryJpaRepository,
 		RepositoryReadmeJpaRepository readmeJpaRepository,
-		RepositoryAnalysisRepository analysisRepository
+		RepositoryAnalysisRepository analysisRepository,
+		AnalysisService analysisService
 	) {
 		this.repositoryJpaRepository = repositoryJpaRepository;
 		this.readmeJpaRepository = readmeJpaRepository;
 		this.analysisRepository = analysisRepository;
+		this.analysisService = analysisService;
 	}
 
 	@Transactional(readOnly = true)
@@ -77,19 +80,14 @@ public class RepositoryQueryService {
 		return RepositoryDetailDto.from(repository, readme, analysis);
 	}
 
-	@Transactional
 	public RepositoryAnalysisResponse requestAnalysis(UUID repositoryId) {
 		AgentRepository repository = findRepositoryOrThrow(repositoryId);
 		readmeJpaRepository.findByRepository(repository)
 			.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "REPOSITORY_001", "README가 없는 레포지토리는 분석을 요청할 수 없습니다."));
 		RepositoryAnalysis analysis = analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId)
 			.orElseGet(() -> {
-				RepositoryAnalysis newAnalysis = RepositoryAnalysis.builder()
-					.repositoryId(repositoryId)
-					.snapshotId(UUID.randomUUID())
-					.status("QUEUED")
-					.build();
-				return analysisRepository.save(newAnalysis);
+				UUID snapshotId = UUID.randomUUID();
+				return analysisService.requestAnalysis(repositoryId, snapshotId, null, repository.getHtmlUrl());
 			});
 		return RepositoryAnalysisResponse.from(analysis);
 	}
