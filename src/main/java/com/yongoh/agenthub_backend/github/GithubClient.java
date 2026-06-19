@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.yongoh.agenthub_backend.github.dto.GithubReadmeDto;
+import com.yongoh.agenthub_backend.github.dto.GithubFileTreeItemDto;
 import com.yongoh.agenthub_backend.github.dto.GithubRepositoryDto;
 import com.yongoh.agenthub_backend.global.config.GithubProperties;
 
@@ -70,6 +71,30 @@ public class GithubClient {
 			}
 		}
 		return Optional.empty();
+	}
+
+	public List<GithubFileTreeItemDto> findFileTree(String owner, String repo, String branch) {
+		URI uri = UriComponentsBuilder.fromPath("/repos/{owner}/{repo}/git/trees/{branch}")
+			.queryParam("recursive", 1)
+			.build(owner, repo, branch);
+
+		Map<String, Object> response = get(uri, "application/vnd.github+json", Map.class);
+		List<GithubFileTreeItemDto> fileTree = new ArrayList<>();
+		Object tree = response.get("tree");
+		if (tree instanceof List<?> entries) {
+			for (Object entry : entries) {
+				if (entry instanceof Map<?, ?> entryMap) {
+					fileTree.add(new GithubFileTreeItemDto(
+						textOrNull(entryMap, "path"),
+						textOrNull(entryMap, "type")
+					));
+					if (fileTree.size() >= properties.getSync().getFileTreeMaxPaths()) {
+						break;
+					}
+				}
+			}
+		}
+		return fileTree;
 	}
 
 	private Optional<GithubReadmeDto> getReadme(String path, String fallbackPath) {

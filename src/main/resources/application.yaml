@@ -63,3 +63,7 @@ github:
 
 agent:
   score-threshold: 8
+
+agenttrace:
+  summary:
+    base-url: "${AGENTTRACE_BASE_URL:http://localhost:8000}"
