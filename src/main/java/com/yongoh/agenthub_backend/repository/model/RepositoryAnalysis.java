@@ -3,7 +3,7 @@ package com.yongoh.agenthub_backend.repository.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.UUID;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "repository_analyses")
@@ -28,17 +28,20 @@ public class RepositoryAnalysis {
 
     private String errorMessage;
 
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(nullable = false)
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = OffsetDateTime.now();
-        updatedAt = OffsetDateTime.now();
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
+        updatedAt = Instant.now();
     }
 }

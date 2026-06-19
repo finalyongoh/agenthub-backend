@@ -8,5 +8,5 @@ CREATE TABLE repository_analyses (
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_analyses_repo_completed ON repository_analyses (repository_id, status);
+CREATE INDEX idx_analyses_repo_status ON repository_analyses (repository_id, status);
 CREATE INDEX idx_analyses_status ON repository_analyses (status);
