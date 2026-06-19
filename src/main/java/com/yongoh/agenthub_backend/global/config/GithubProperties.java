@@ -66,6 +66,7 @@ public class GithubProperties {
 		private String searchOrder = "desc";
 		private int minStars = 20;
 		private int retryCount = 2;
+		private int fileTreeMaxPaths = 200;
 		private List<String> queries = List.of(
 			"\"ai agent\" in:readme stars:>20",
 			"\"llm agent\" in:readme stars:>20",
@@ -137,6 +138,14 @@ public class GithubProperties {
 
 		public void setRetryCount(int retryCount) {
 			this.retryCount = retryCount;
+		}
+
+		public int getFileTreeMaxPaths() {
+			return fileTreeMaxPaths;
+		}
+
+		public void setFileTreeMaxPaths(int fileTreeMaxPaths) {
+			this.fileTreeMaxPaths = fileTreeMaxPaths;
 		}
 
 		public List<String> getQueries() {
