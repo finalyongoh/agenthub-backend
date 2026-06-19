@@ -16,7 +16,7 @@ import com.yongoh.agenthub_backend.repository.dto.RepositoryBookmarkListResponse
 import com.yongoh.agenthub_backend.repository.model.AgentRepository;
 import com.yongoh.agenthub_backend.repository.model.RepositoryBookmark;
 import com.yongoh.agenthub_backend.repository.repository.AgentRepositoryJpaRepository;
-import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisJpaRepository;
+import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryBookmarkJpaRepository;
 import com.yongoh.agenthub_backend.user.model.User;
 import com.yongoh.agenthub_backend.user.repository.UserRepository;
@@ -26,18 +26,18 @@ public class RepositoryBookmarkService {
 	private final UserRepository userRepository;
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryBookmarkJpaRepository bookmarkJpaRepository;
-	private final RepositoryAnalysisJpaRepository analysisJpaRepository;
+	private final RepositoryAnalysisRepository analysisRepository;
 
 	public RepositoryBookmarkService(
 		UserRepository userRepository,
 		AgentRepositoryJpaRepository repositoryJpaRepository,
 		RepositoryBookmarkJpaRepository bookmarkJpaRepository,
-		RepositoryAnalysisJpaRepository analysisJpaRepository
+		RepositoryAnalysisRepository analysisRepository
 	) {
 		this.userRepository = userRepository;
 		this.repositoryJpaRepository = repositoryJpaRepository;
 		this.bookmarkJpaRepository = bookmarkJpaRepository;
-		this.analysisJpaRepository = analysisJpaRepository;
+		this.analysisRepository = analysisRepository;
 	}
 
 	@Transactional
@@ -46,7 +46,7 @@ public class RepositoryBookmarkService {
 		AgentRepository repository = findRepository(repositoryId);
 		RepositoryBookmark bookmark = bookmarkJpaRepository.findByUserAndRepository(user, repository)
 			.orElseGet(() -> saveBookmarkSafely(user, repository));
-		return RepositoryBookmarkDto.from(bookmark, analysisJpaRepository.existsByRepository(repository));
+		return RepositoryBookmarkDto.from(bookmark, analysisRepository.existsByRepositoryId(repository.getId()));
 	}
 
 	@Transactional
@@ -63,7 +63,7 @@ public class RepositoryBookmarkService {
 			.stream()
 			.map(bookmark -> RepositoryBookmarkDto.from(
 				bookmark,
-				analysisJpaRepository.existsByRepository(bookmark.getRepository())
+				analysisRepository.existsByRepositoryId(bookmark.getRepository().getId())
 			))
 			.toList();
 	}
@@ -77,7 +77,7 @@ public class RepositoryBookmarkService {
 			bookmarks.stream()
 				.map(bookmark -> RepositoryBookmarkDto.from(
 					bookmark,
-					analysisJpaRepository.existsByRepository(bookmark.getRepository())
+					analysisRepository.existsByRepositoryId(bookmark.getRepository().getId())
 				))
 				.toList(),
 			page,

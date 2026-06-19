@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +26,7 @@ import com.yongoh.agenthub_backend.repository.model.RepositoryAnalysis;
 import com.yongoh.agenthub_backend.repository.model.RepositoryFileTree;
 import com.yongoh.agenthub_backend.repository.model.RepositoryReadme;
 import com.yongoh.agenthub_backend.repository.repository.AgentRepositoryJpaRepository;
-import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisJpaRepository;
+import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryFileTreeJpaRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryReadmeJpaRepository;
 
@@ -42,7 +43,7 @@ public class RepositorySyncService {
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
 	private final RepositoryFileTreeJpaRepository fileTreeJpaRepository;
-	private final RepositoryAnalysisJpaRepository analysisJpaRepository;
+	private final RepositoryAnalysisRepository analysisRepository;
 	private final RepositoryNotificationService notificationService;
 	private final GithubProperties properties;
 
@@ -56,7 +57,7 @@ public class RepositorySyncService {
 		AgentRepositoryJpaRepository repositoryJpaRepository,
 		RepositoryReadmeJpaRepository readmeJpaRepository,
 		RepositoryFileTreeJpaRepository fileTreeJpaRepository,
-		RepositoryAnalysisJpaRepository analysisJpaRepository,
+		RepositoryAnalysisRepository analysisRepository,
 		RepositoryNotificationService notificationService,
 		GithubProperties properties
 	) {
@@ -69,7 +70,7 @@ public class RepositorySyncService {
 		this.repositoryJpaRepository = repositoryJpaRepository;
 		this.readmeJpaRepository = readmeJpaRepository;
 		this.fileTreeJpaRepository = fileTreeJpaRepository;
-		this.analysisJpaRepository = analysisJpaRepository;
+		this.analysisRepository = analysisRepository;
 		this.notificationService = notificationService;
 		this.properties = properties;
 	}
@@ -196,8 +197,15 @@ public class RepositorySyncService {
 	}
 
 	private void queueAnalysis(AgentRepository repository) {
-		if (!analysisJpaRepository.existsByRepository(repository)) {
-			analysisJpaRepository.save(RepositoryAnalysis.pending(repository));
+		if (!analysisRepository.existsByRepositoryId(repository.getId())) {
+			UUID fileTreeId = fileTreeJpaRepository.findByRepository(repository)
+				.map(RepositoryFileTree::getId)
+				.orElseGet(UUID::randomUUID);
+			analysisRepository.save(RepositoryAnalysis.builder()
+				.repositoryId(repository.getId())
+				.snapshotId(fileTreeId)
+				.status("QUEUED")
+				.build());
 		}
 	}
 

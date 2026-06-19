@@ -60,7 +60,7 @@ public class RepositoryDetailDto {
 			repository.getAgentCategory(),
 			repository.getReadmeSummary(),
 			preview,
-			analysis == null ? null : analysis.getStatus().name().toLowerCase()
+			analysis == null ? null : analysis.getStatus().toLowerCase()
 		);
 	}
 }

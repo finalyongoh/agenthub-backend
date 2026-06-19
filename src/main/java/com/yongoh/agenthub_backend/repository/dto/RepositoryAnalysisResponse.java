@@ -15,9 +15,9 @@ public class RepositoryAnalysisResponse {
 
 	public static RepositoryAnalysisResponse from(RepositoryAnalysis analysis) {
 		return new RepositoryAnalysisResponse(
-			analysis.getId(),
-			analysis.getRepository().getId(),
-			analysis.getStatus().name().toLowerCase()
+			analysis.getAnalysisId(),
+			analysis.getRepositoryId(),
+			analysis.getStatus()
 		);
 	}
 }
