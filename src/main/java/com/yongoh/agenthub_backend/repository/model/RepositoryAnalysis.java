@@ -27,6 +27,7 @@ public class RepositoryAnalysis {
     private String status;
 
     @Column(columnDefinition = "jsonb")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     private String resultJson;
 
     private String errorMessage;
