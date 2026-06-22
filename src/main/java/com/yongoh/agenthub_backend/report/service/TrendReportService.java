@@ -66,6 +66,20 @@ public class TrendReportService {
 			.orElseGet(() -> generate(start, end));
 	}
 
+	@Transactional
+	public TrendReportResponse generatePeriod(LocalDate start, LocalDate end) {
+		LocalDate thisMonday = LocalDate.now(REPORT_ZONE).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+		if (start.getDayOfWeek() != DayOfWeek.MONDAY || end.getDayOfWeek() != DayOfWeek.SUNDAY) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A report period must run from Monday through Sunday.");
+		}
+		if (!end.equals(start.plusDays(6)) || !end.isBefore(thisMonday)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only a completed seven-day report period can be generated.");
+		}
+		return trendReportJpaRepository.findByPeriodStartAndPeriodEnd(start, end)
+			.map(this::toResponse)
+			.orElseGet(() -> generate(start, end));
+	}
+
 	@Transactional(readOnly = true)
 	public TrendReportResponse latest() {
 		return trendReportJpaRepository.findFirstByStatusOrderByPeriodEndDesc(TrendReportStatus.PUBLISHED)
