@@ -45,6 +45,9 @@ public class Post {
 	@Column(nullable = false, columnDefinition = "text")
 	private String body;
 
+	@Column(name = "image_filename", length = 100)
+	private String imageFilename;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private PostStatus status;
@@ -56,11 +59,16 @@ public class Post {
 	private Instant updatedAt;
 
 	public static Post create(User user, String title, String body) {
+		return create(user, title, body, null);
+	}
+
+	public static Post create(User user, String title, String body, String imageFilename) {
 		Post post = new Post();
 		post.id = UUID.randomUUID();
 		post.user = user;
 		post.title = title;
 		post.body = body;
+		post.imageFilename = imageFilename;
 		post.status = PostStatus.ACTIVE;
 		return post;
 	}

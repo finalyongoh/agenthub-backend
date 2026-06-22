@@ -48,6 +48,9 @@ public class RepositoryDiscussion {
 	@Column(nullable = false, columnDefinition = "text")
 	private String body;
 
+	@Column(name = "image_filename", length = 100)
+	private String imageFilename;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private PostStatus status;
@@ -59,12 +62,17 @@ public class RepositoryDiscussion {
 	private Instant updatedAt;
 
 	public static RepositoryDiscussion create(User user, UUID repositoryId, String title, String body) {
+		return create(user, repositoryId, title, body, null);
+	}
+
+	public static RepositoryDiscussion create(User user, UUID repositoryId, String title, String body, String imageFilename) {
 		RepositoryDiscussion discussion = new RepositoryDiscussion();
 		discussion.id = UUID.randomUUID();
 		discussion.user = user;
 		discussion.repositoryId = repositoryId;
 		discussion.title = title;
 		discussion.body = body;
+		discussion.imageFilename = imageFilename;
 		discussion.status = PostStatus.ACTIVE;
 		return discussion;
 	}

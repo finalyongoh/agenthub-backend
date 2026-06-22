@@ -6,6 +6,11 @@ spring:
   application:
     name: agenthub
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+
   # PostgreSQL 연동 설정
   datasource:
     url: jdbc:postgresql://localhost:5432/agenthub
@@ -37,6 +42,8 @@ spring:
 agenthub:
   frontend:
     base-url: ${AGENTHUB_FRONTEND_BASE_URL:http://localhost:5173}
+  images:
+    directory: "${AGENTHUB_IMAGE_DIRECTORY:img}"
   auth:
     jwt:
       issuer: agenthub

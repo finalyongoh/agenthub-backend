@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.yongoh.agenthub_backend.community.dto.CommunityCreateRequest;
 import com.yongoh.agenthub_backend.community.dto.CommunityCommentDto;
@@ -41,6 +42,7 @@ public class CommunityService {
 	private final DiscussionLikeRepository discussionLikeRepository;
 	private final UserRepository userRepository;
 	private final AgentRepositoryJpaRepository agentRepositoryJpaRepository;
+	private final PostImageStorageService postImageStorageService;
 
 	public CommunityService(
 		PostRepository postRepository,
@@ -50,7 +52,8 @@ public class CommunityService {
 		PostLikeRepository postLikeRepository,
 		DiscussionLikeRepository discussionLikeRepository,
 		UserRepository userRepository,
-		AgentRepositoryJpaRepository agentRepositoryJpaRepository
+		AgentRepositoryJpaRepository agentRepositoryJpaRepository,
+		PostImageStorageService postImageStorageService
 	) {
 		this.postRepository = postRepository;
 		this.discussionRepository = discussionRepository;
@@ -60,13 +63,20 @@ public class CommunityService {
 		this.discussionLikeRepository = discussionLikeRepository;
 		this.userRepository = userRepository;
 		this.agentRepositoryJpaRepository = agentRepositoryJpaRepository;
+		this.postImageStorageService = postImageStorageService;
 	}
 
 	@Transactional
 	public PostDto createPost(UUID userId, CommunityCreateRequest request) {
+		return createPost(userId, request, null);
+	}
+
+	@Transactional
+	public PostDto createPost(UUID userId, CommunityCreateRequest request, MultipartFile image) {
 		validateRequest(request);
 		User user = findActiveUser(userId);
-		Post post = Post.create(user, request.getTitle().trim(), request.getBody().trim());
+		String imageFilename = postImageStorageService.store(image);
+		Post post = Post.create(user, request.getTitle().trim(), request.getBody().trim(), imageFilename);
 		return PostDto.from(postRepository.save(post));
 	}
 
@@ -132,6 +142,16 @@ public class CommunityService {
 
 	@Transactional
 	public RepositoryDiscussionDto createDiscussion(UUID userId, UUID repositoryId, CommunityCreateRequest request) {
+		return createDiscussion(userId, repositoryId, request, null);
+	}
+
+	@Transactional
+	public RepositoryDiscussionDto createDiscussion(
+		UUID userId,
+		UUID repositoryId,
+		CommunityCreateRequest request,
+		MultipartFile image
+	) {
 		validateRequest(request);
 		User user = findActiveUser(userId);
 		validateCollectedRepository(repositoryId);
@@ -139,7 +159,8 @@ public class CommunityService {
 			user,
 			repositoryId,
 			request.getTitle().trim(),
-			request.getBody().trim()
+			request.getBody().trim(),
+			postImageStorageService.store(image)
 		);
 		return RepositoryDiscussionDto.from(discussionRepository.save(discussion));
 	}

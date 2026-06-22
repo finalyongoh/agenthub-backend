@@ -75,6 +75,7 @@ services:
       AGENTHUB_FRONTEND_BASE_URL: ${AGENTHUB_FRONTEND_BASE_URL:-https://agenthub.wolyong.cloud}
       GITHUB_TOKEN: ${GITHUB_TOKEN_FOR_APP:-}
       AGENTTRACE_BASE_URL: http://agenttrace:8000
+      AGENTHUB_IMAGE_DIRECTORY: /app/img
       TZ: Asia/Seoul
     depends_on:
       agenthub-postgres:
@@ -89,6 +90,8 @@ services:
       - agenthub_internal
     restart: unless-stopped
     mem_limit: 768m
+    volumes:
+      - agenthub_images:/app/img
     healthcheck:
       test: ["CMD", "curl", "-sS", "-o", "/dev/null", "http://127.0.0.1:8080/api/trend-reports/latest"]
       interval: 15s
@@ -113,6 +116,7 @@ services:
 volumes:
   agenthub_postgres_data:
   agenthub_redis_data:
+  agenthub_images:
 
 networks:
   agenthub_internal:

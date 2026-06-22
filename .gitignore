@@ -2,6 +2,8 @@ HELP.md
 .gradle
 build/
 docker_data/
+img/*
+!img/.gitkeep
 .DS_Store
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/

@@ -14,6 +14,8 @@ public class PostDto {
 	private UUID userId;
 	private String title;
 	private String body;
+	private boolean hasImage;
+	private String imageUrl;
 	private String status;
 	private Instant createdAt;
 	private Instant updatedAt;
@@ -24,6 +26,8 @@ public class PostDto {
 			post.getUser().getId(),
 			post.getTitle(),
 			post.getBody(),
+			post.getImageFilename() != null,
+			post.getImageFilename() == null ? null : "/api/images/" + post.getImageFilename(),
 			post.getStatus().name(),
 			post.getCreatedAt(),
 			post.getUpdatedAt()

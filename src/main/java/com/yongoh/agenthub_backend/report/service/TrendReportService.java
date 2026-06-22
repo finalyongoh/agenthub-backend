@@ -151,15 +151,15 @@ public class TrendReportService {
 		ranked.sort((left, right) -> Integer.compare(number(right.get("star_delta")), number(left.get("star_delta"))));
 		List<Map<String, Object>> featured = ranked.stream().limit(3).map(repository -> Map.<String, Object>of(
 			"repository_id", repository.get("repository_id"),
-			"reason", "Selected from the highest verified weekly star growth."
+			"reason", "검증된 주간 스타 증가량을 기준으로 선정했습니다."
 		)).toList();
 		Map<String, Object> fallback = new LinkedHashMap<>();
-		fallback.put("title", "Weekly AI Open Source Radar");
-		fallback.put("executive_summary", "This report was generated from verified repository metrics; AI commentary was unavailable.");
+		fallback.put("title", "주간 AI 오픈소스 리포트");
+		fallback.put("executive_summary", "검증된 저장소 지표를 기반으로 생성한 리포트입니다. AI 분석 본문은 사용할 수 없습니다.");
 		fallback.put("trend_signals", List.of());
 		fallback.put("featured_repositories", featured);
-		fallback.put("recommendations", List.of("Inspect the featured repositories and their latest analysis before adoption."));
-		fallback.put("limitations", List.of("AI narrative generation was unavailable.", "Only stored repository metrics were used."));
+		fallback.put("recommendations", List.of("도입 전에 주요 저장소와 최신 분석 내용을 직접 확인하세요."));
+		fallback.put("limitations", List.of("AI 분석 본문을 생성하지 못했습니다.", "저장된 저장소 지표만 사용했습니다."));
 		fallback.put("period_start", start.toString());
 		fallback.put("period_end", end.toString());
 		return fallback;

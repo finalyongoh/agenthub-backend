@@ -15,6 +15,8 @@ public class RepositoryDiscussionDto {
 	private UUID repositoryId;
 	private String title;
 	private String body;
+	private boolean hasImage;
+	private String imageUrl;
 	private String status;
 	private Instant createdAt;
 	private Instant updatedAt;
@@ -26,6 +28,8 @@ public class RepositoryDiscussionDto {
 			discussion.getRepositoryId(),
 			discussion.getTitle(),
 			discussion.getBody(),
+			discussion.getImageFilename() != null,
+			discussion.getImageFilename() == null ? null : "/api/images/" + discussion.getImageFilename(),
 			discussion.getStatus().name(),
 			discussion.getCreatedAt(),
 			discussion.getUpdatedAt()
