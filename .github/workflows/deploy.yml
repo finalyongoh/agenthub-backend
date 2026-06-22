@@ -117,6 +117,18 @@ jobs:
                 fi
                 sleep 5
               done
+              docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps agenthub-frontend
+              for attempt in $(seq 1 12); do
+                frontend_status="$(docker inspect -f '{{.State.Status}}' agenthub-frontend 2>/dev/null || true)"
+                if [ "$frontend_status" = "running" ]; then
+                  break
+                fi
+                if [ "$attempt" -eq 12 ]; then
+                  docker logs --tail 100 agenthub-frontend || true
+                  exit 1
+                fi
+                sleep 5
+              done
               docker compose -f docker-compose.prod.yml ps
               docker image prune -f
             ) 9>/tmp/agenthub-deploy.lock
