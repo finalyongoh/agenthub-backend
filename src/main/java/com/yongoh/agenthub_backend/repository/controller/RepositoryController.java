@@ -14,6 +14,7 @@ import com.yongoh.agenthub_backend.global.security.AuthenticatedUser;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryAnalysisResponse;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryBookmarkDto;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryBookmarkListResponse;
+import com.yongoh.agenthub_backend.repository.dto.RepositoryBookmarkStatusResponse;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryDetailDto;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryListResponse;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryNotificationDto;
@@ -68,6 +69,14 @@ public class RepositoryController {
 		@PathVariable UUID repositoryId
 	) {
 		return bookmarkService.bookmark(user.getId(), repositoryId);
+	}
+
+	@GetMapping("/api/repositories/{repositoryId}/bookmark")
+	public RepositoryBookmarkStatusResponse getBookmarkStatus(
+		@AuthenticationPrincipal AuthenticatedUser user,
+		@PathVariable UUID repositoryId
+	) {
+		return new RepositoryBookmarkStatusResponse(bookmarkService.isBookmarked(user.getId(), repositoryId));
 	}
 
 	@DeleteMapping("/api/repositories/{repositoryId}/bookmark")

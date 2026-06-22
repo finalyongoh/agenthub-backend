@@ -57,6 +57,13 @@ public class RepositoryBookmarkService {
 	}
 
 	@Transactional(readOnly = true)
+	public boolean isBookmarked(UUID userId, UUID repositoryId) {
+		User user = findUser(userId);
+		AgentRepository repository = findRepository(repositoryId);
+		return bookmarkJpaRepository.existsByUserAndRepository(user, repository);
+	}
+
+	@Transactional(readOnly = true)
 	public List<RepositoryBookmarkDto> findBookmarks(UUID userId) {
 		User user = findUser(userId);
 		return bookmarkJpaRepository.findByUserOrderByCreatedAtDesc(user)
