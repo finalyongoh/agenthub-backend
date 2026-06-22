@@ -35,7 +35,7 @@ services:
   agenthub-backend:
     container_name: agenthub-backend
     build:
-      context: ../../agenthub-backend
+      context: ./agenthub-backend
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://agenthub-postgres:5432/agenthub
       SPRING_DATASOURCE_USERNAME: agenthub_user
@@ -69,7 +69,7 @@ services:
   agenthub-frontend:
     container_name: agenthub-frontend
     build:
-      context: ../../agenthub-frontend
+      context: ./agenthub-frontend
     depends_on:
       - agenthub-backend
     expose:
