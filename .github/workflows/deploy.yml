@@ -23,6 +23,14 @@ jobs:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           path: agenthub-frontend
 
+      - name: Checkout AgentTrace
+        uses: actions/checkout@v4
+        with:
+          repository: finalyongoh/agenttrace
+          ref: main
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          path: agenttrace
+
       - name: Build backend
         working-directory: agenthub-backend
         run: |
@@ -49,6 +57,14 @@ jobs:
             --exclude 'node_modules' \
             --exclude 'dist' \
             agenthub-frontend bundle/
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude '.env' \
+            --exclude '.venv' \
+            --exclude '__pycache__' \
+            --exclude '.pytest_cache' \
+            --exclude 'data' \
+            agenttrace bundle/
           cp agenthub-backend/deploy/docker-compose.prod.yml bundle/docker-compose.prod.yml
 
       - name: Upload bundle
@@ -84,7 +100,23 @@ jobs:
                 printf 'POSTGRES_PASSWORD=%s\n' '${{ secrets.POSTGRES_PASSWORD }}'
                 printf 'AGENTHUB_JWT_SECRET=%s\n' '${{ secrets.AGENTHUB_JWT_SECRET }}'
                 printf 'GITHUB_TOKEN_FOR_APP=%s\n' '${{ secrets.APP_GITHUB_TOKEN }}'
+                printf 'GMS_API_KEY=%s\n' '${{ secrets.GMS_API_KEY }}'
               } > .env
               docker compose -f docker-compose.prod.yml up -d --build
+              for attempt in $(seq 1 30); do
+                backend_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' agenthub-backend 2>/dev/null || true)"
+                agenttrace_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' agenttrace 2>/dev/null || true)"
+                if [ "$backend_health" = "healthy" ] && [ "$agenttrace_health" = "healthy" ]; then
+                  break
+                fi
+                if [ "$attempt" -eq 30 ]; then
+                  docker compose -f docker-compose.prod.yml ps
+                  docker logs --tail 100 agenthub-backend || true
+                  docker logs --tail 100 agenttrace || true
+                  exit 1
+                fi
+                sleep 5
+              done
+              docker compose -f docker-compose.prod.yml ps
               docker image prune -f
             ) 9>/tmp/agenthub-deploy.lock

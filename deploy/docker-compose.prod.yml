@@ -32,6 +32,29 @@ services:
       - agenthub_internal
     restart: unless-stopped
 
+  agenttrace:
+    container_name: agenttrace
+    build:
+      context: ./agenttrace
+    environment:
+      OPENAI_API_KEY: ${GMS_API_KEY}
+      OPENAI_API_BASE: https://gms.ssafy.io/gmsapi/api.openai.com/v1
+      AGENTTRACE_SUMMARY_MODEL: gpt-4o-mini
+      LANGSMITH_TRACING: "false"
+      TZ: Asia/Seoul
+    expose:
+      - "8000"
+    networks:
+      - agenthub_internal
+    restart: unless-stopped
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   agenthub-backend:
     container_name: agenthub-backend
     build:
@@ -45,33 +68,41 @@ services:
       SPRING_JPA_SHOW_SQL: "false"
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_BATCH_JOB_ENABLED: "false"
-      SPRING_PROFILES_ACTIVE: oauth
+      SPRING_PROFILES_ACTIVE: prod
       SERVER_FORWARD_HEADERS_STRATEGY: framework
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70.0
       AGENTHUB_JWT_SECRET: ${AGENTHUB_JWT_SECRET}
       AGENTHUB_FRONTEND_BASE_URL: ${AGENTHUB_FRONTEND_BASE_URL:-https://agenthub.wolyong.cloud}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       GITHUB_TOKEN: ${GITHUB_TOKEN_FOR_APP:-}
+      AGENTTRACE_BASE_URL: http://agenttrace:8000
       TZ: Asia/Seoul
     depends_on:
       agenthub-postgres:
         condition: service_healthy
       agenthub-redis:
         condition: service_started
+      agenttrace:
+        condition: service_healthy
     expose:
       - "8080"
     networks:
       - agenthub_internal
     restart: unless-stopped
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "curl", "-sS", "-o", "/dev/null", "http://127.0.0.1:8080/api/trend-reports/latest"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
 
   agenthub-frontend:
     container_name: agenthub-frontend
     build:
       context: ./agenthub-frontend
     depends_on:
-      - agenthub-backend
+      agenthub-backend:
+        condition: service_healthy
     expose:
       - "80"
     networks:
