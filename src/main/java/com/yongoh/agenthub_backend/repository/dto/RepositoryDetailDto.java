@@ -33,6 +33,7 @@ public class RepositoryDetailDto {
 	private String agentCategory;
 	private String readmeSummary;
 	private String readmePreview;
+	private UUID analysisId;
 	private String analysisStatus;
 
 	public static RepositoryDetailDto from(AgentRepository repository, RepositoryReadme readme, RepositoryAnalysis analysis) {
@@ -60,6 +61,7 @@ public class RepositoryDetailDto {
 			repository.getAgentCategory(),
 			repository.getReadmeSummary(),
 			preview,
+			analysis == null ? null : analysis.getId(),
 			analysis == null ? null : analysis.getStatus().name().toLowerCase()
 		);
 	}
