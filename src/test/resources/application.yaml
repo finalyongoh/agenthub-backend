@@ -22,6 +22,8 @@ spring:
       enabled: false
 
 agenthub:
+  frontend:
+    base-url: http://localhost:5173
   auth:
     jwt:
       issuer: agenthub-test

@@ -7,12 +7,24 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.yongoh.agenthub_backend.community.dto.CommunityCreateRequest;
+import com.yongoh.agenthub_backend.community.dto.CommunityCommentDto;
+import com.yongoh.agenthub_backend.community.dto.CommunityCommentRequest;
+import com.yongoh.agenthub_backend.community.dto.CommunityLikeDto;
 import com.yongoh.agenthub_backend.community.dto.PostDto;
 import com.yongoh.agenthub_backend.community.dto.RepositoryDiscussionDto;
+import com.yongoh.agenthub_backend.community.model.DiscussionComment;
+import com.yongoh.agenthub_backend.community.model.DiscussionLike;
 import com.yongoh.agenthub_backend.community.model.Post;
+import com.yongoh.agenthub_backend.community.model.PostComment;
+import com.yongoh.agenthub_backend.community.model.PostLike;
 import com.yongoh.agenthub_backend.community.model.RepositoryDiscussion;
+import com.yongoh.agenthub_backend.community.repository.DiscussionCommentRepository;
+import com.yongoh.agenthub_backend.community.repository.DiscussionLikeRepository;
+import com.yongoh.agenthub_backend.community.repository.PostCommentRepository;
+import com.yongoh.agenthub_backend.community.repository.PostLikeRepository;
 import com.yongoh.agenthub_backend.community.repository.PostRepository;
 import com.yongoh.agenthub_backend.community.repository.RepositoryDiscussionRepository;
 import com.yongoh.agenthub_backend.global.exception.GlobalExceptionHandler.ApiException;
@@ -24,26 +36,47 @@ import com.yongoh.agenthub_backend.user.repository.UserRepository;
 public class CommunityService {
 	private final PostRepository postRepository;
 	private final RepositoryDiscussionRepository discussionRepository;
+	private final PostCommentRepository postCommentRepository;
+	private final DiscussionCommentRepository discussionCommentRepository;
+	private final PostLikeRepository postLikeRepository;
+	private final DiscussionLikeRepository discussionLikeRepository;
 	private final UserRepository userRepository;
 	private final AgentRepositoryJpaRepository agentRepositoryJpaRepository;
+	private final PostImageStorageService postImageStorageService;
 
 	public CommunityService(
 		PostRepository postRepository,
 		RepositoryDiscussionRepository discussionRepository,
+		PostCommentRepository postCommentRepository,
+		DiscussionCommentRepository discussionCommentRepository,
+		PostLikeRepository postLikeRepository,
+		DiscussionLikeRepository discussionLikeRepository,
 		UserRepository userRepository,
-		AgentRepositoryJpaRepository agentRepositoryJpaRepository
+		AgentRepositoryJpaRepository agentRepositoryJpaRepository,
+		PostImageStorageService postImageStorageService
 	) {
 		this.postRepository = postRepository;
 		this.discussionRepository = discussionRepository;
+		this.postCommentRepository = postCommentRepository;
+		this.discussionCommentRepository = discussionCommentRepository;
+		this.postLikeRepository = postLikeRepository;
+		this.discussionLikeRepository = discussionLikeRepository;
 		this.userRepository = userRepository;
 		this.agentRepositoryJpaRepository = agentRepositoryJpaRepository;
+		this.postImageStorageService = postImageStorageService;
 	}
 
 	@Transactional
 	public PostDto createPost(UUID userId, CommunityCreateRequest request) {
+		return createPost(userId, request, null);
+	}
+
+	@Transactional
+	public PostDto createPost(UUID userId, CommunityCreateRequest request, MultipartFile image) {
 		validateRequest(request);
 		User user = findActiveUser(userId);
-		Post post = Post.create(user, request.getTitle().trim(), request.getBody().trim());
+		String imageFilename = postImageStorageService.store(image);
+		Post post = Post.create(user, request.getTitle().trim(), request.getBody().trim(), imageFilename);
 		return PostDto.from(postRepository.save(post));
 	}
 
@@ -58,15 +91,67 @@ public class CommunityService {
 	@Transactional
 	public PostDto deletePost(UUID userId, UUID postId) {
 		findActiveUser(userId);
-		Post post = postRepository.findById(postId)
-			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "게시글을 찾을 수 없습니다."));
+		Post post = findPost(postId);
 		validateOwner(userId, post.getUser().getId());
 		post.delete();
 		return PostDto.from(post);
 	}
 
+	@Transactional(readOnly = true)
+	public List<CommunityCommentDto> findPostComments(UUID postId) {
+		Post post = findPost(postId);
+		return postCommentRepository.findByPostOrderByCreatedAtAsc(post)
+			.stream()
+			.map(CommunityCommentDto::from)
+			.toList();
+	}
+
+	@Transactional
+	public CommunityCommentDto createPostComment(UUID userId, UUID postId, CommunityCommentRequest request) {
+		User user = findActiveUser(userId);
+		Post post = findPost(postId);
+		String body = validateCommentRequest(request);
+		return CommunityCommentDto.from(postCommentRepository.save(PostComment.create(post, user, body)));
+	}
+
+	@Transactional(readOnly = true)
+	public CommunityLikeDto findPostLike(UUID userId, UUID postId) {
+		Post post = findPost(postId);
+		User user = findActiveUser(userId);
+		return new CommunityLikeDto(
+			postLikeRepository.findByPostAndUser(post, user).isPresent(),
+			postLikeRepository.countByPost(post)
+		);
+	}
+
+	@Transactional
+	public CommunityLikeDto togglePostLike(UUID userId, UUID postId) {
+		User user = findActiveUser(userId);
+		Post post = findPost(postId);
+		var like = postLikeRepository.findByPostAndUser(post, user);
+		boolean liked;
+		if (like.isPresent()) {
+			postLikeRepository.delete(like.get());
+			liked = false;
+		} else {
+			postLikeRepository.save(PostLike.create(post, user));
+			liked = true;
+		}
+		return new CommunityLikeDto(liked, postLikeRepository.countByPost(post));
+	}
+
 	@Transactional
 	public RepositoryDiscussionDto createDiscussion(UUID userId, UUID repositoryId, CommunityCreateRequest request) {
+		return createDiscussion(userId, repositoryId, request, null);
+	}
+
+	@Transactional
+	public RepositoryDiscussionDto createDiscussion(
+		UUID userId,
+		UUID repositoryId,
+		CommunityCreateRequest request,
+		MultipartFile image
+	) {
 		validateRequest(request);
 		User user = findActiveUser(userId);
 		validateCollectedRepository(repositoryId);
@@ -74,7 +159,8 @@ public class CommunityService {
 			user,
 			repositoryId,
 			request.getTitle().trim(),
-			request.getBody().trim()
+			request.getBody().trim(),
+			postImageStorageService.store(image)
 		);
 		return RepositoryDiscussionDto.from(discussionRepository.save(discussion));
 	}
@@ -92,14 +178,53 @@ public class CommunityService {
 	public RepositoryDiscussionDto deleteDiscussion(UUID userId, UUID repositoryId, UUID discussionId) {
 		findActiveUser(userId);
 		validateCollectedRepository(repositoryId);
-		RepositoryDiscussion discussion = discussionRepository.findById(discussionId)
-			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "토론 글을 찾을 수 없습니다."));
-		if (!discussion.getRepositoryId().equals(repositoryId)) {
-			throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "토론 글을 찾을 수 없습니다.");
-		}
+		RepositoryDiscussion discussion = findDiscussion(repositoryId, discussionId);
 		validateOwner(userId, discussion.getUser().getId());
 		discussion.delete();
 		return RepositoryDiscussionDto.from(discussion);
+	}
+
+	@Transactional(readOnly = true)
+	public List<CommunityCommentDto> findDiscussionComments(UUID repositoryId, UUID discussionId) {
+		RepositoryDiscussion discussion = findDiscussion(repositoryId, discussionId);
+		return discussionCommentRepository.findByDiscussionOrderByCreatedAtAsc(discussion)
+			.stream()
+			.map(CommunityCommentDto::from)
+			.toList();
+	}
+
+	@Transactional
+	public CommunityCommentDto createDiscussionComment(UUID userId, UUID repositoryId, UUID discussionId, CommunityCommentRequest request) {
+		User user = findActiveUser(userId);
+		RepositoryDiscussion discussion = findDiscussion(repositoryId, discussionId);
+		String body = validateCommentRequest(request);
+		return CommunityCommentDto.from(discussionCommentRepository.save(DiscussionComment.create(discussion, user, body)));
+	}
+
+	@Transactional(readOnly = true)
+	public CommunityLikeDto findDiscussionLike(UUID userId, UUID repositoryId, UUID discussionId) {
+		User user = findActiveUser(userId);
+		RepositoryDiscussion discussion = findDiscussion(repositoryId, discussionId);
+		return new CommunityLikeDto(
+			discussionLikeRepository.findByDiscussionAndUser(discussion, user).isPresent(),
+			discussionLikeRepository.countByDiscussion(discussion)
+		);
+	}
+
+	@Transactional
+	public CommunityLikeDto toggleDiscussionLike(UUID userId, UUID repositoryId, UUID discussionId) {
+		User user = findActiveUser(userId);
+		RepositoryDiscussion discussion = findDiscussion(repositoryId, discussionId);
+		var like = discussionLikeRepository.findByDiscussionAndUser(discussion, user);
+		boolean liked;
+		if (like.isPresent()) {
+			discussionLikeRepository.delete(like.get());
+			liked = false;
+		} else {
+			discussionLikeRepository.save(DiscussionLike.create(discussion, user));
+			liked = true;
+		}
+		return new CommunityLikeDto(liked, discussionLikeRepository.countByDiscussion(discussion));
 	}
 
 	private User findActiveUser(UUID userId) {
@@ -115,6 +240,28 @@ public class CommunityService {
 		if (request == null || !StringUtils.hasText(request.getTitle()) || !StringUtils.hasText(request.getBody())) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_001", "필수 입력값이 누락되었습니다.");
 		}
+	}
+
+	private String validateCommentRequest(CommunityCommentRequest request) {
+		if (request == null || !StringUtils.hasText(request.getBody())) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_001", "댓글 내용을 입력해주세요.");
+		}
+		return request.getBody().trim();
+	}
+
+	private Post findPost(UUID postId) {
+		return postRepository.findById(postId)
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "게시글을 찾을 수 없습니다."));
+	}
+
+	private RepositoryDiscussion findDiscussion(UUID repositoryId, UUID discussionId) {
+		validateCollectedRepository(repositoryId);
+		RepositoryDiscussion discussion = discussionRepository.findById(discussionId)
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "토론 글을 찾을 수 없습니다."));
+		if (!discussion.getRepositoryId().equals(repositoryId)) {
+			throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "토론 글을 찾을 수 없습니다.");
+		}
+		return discussion;
 	}
 
 	private void validateCollectedRepository(UUID repositoryId) {

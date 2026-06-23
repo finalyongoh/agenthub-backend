@@ -14,6 +14,7 @@ import com.yongoh.agenthub_backend.global.security.AuthenticatedUser;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryAnalysisResponse;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryBookmarkDto;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryBookmarkListResponse;
+import com.yongoh.agenthub_backend.repository.dto.RepositoryBookmarkStatusResponse;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryDetailDto;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryListResponse;
 import com.yongoh.agenthub_backend.repository.dto.RepositoryNotificationDto;
@@ -41,6 +42,7 @@ public class RepositoryController {
 
 	@GetMapping("/api/repositories")
 	public RepositoryListResponse findRepositories(
+		@RequestParam(required = false) String q,
 		@RequestParam(required = false) String category,
 		@RequestParam(required = false) String language,
 		@RequestParam(required = false) Integer minStars,
@@ -49,7 +51,7 @@ public class RepositoryController {
 		@RequestParam(defaultValue = "1") int page,
 		@RequestParam(defaultValue = "20") int limit
 	) {
-		return repositoryQueryService.findRepositories(category, language, minStars, sort, order, page, limit);
+		return repositoryQueryService.findRepositories(q, category, language, minStars, sort, order, page, limit);
 	}
 
 	@GetMapping("/api/repositories/{repositoryId}")
@@ -68,6 +70,14 @@ public class RepositoryController {
 		@PathVariable UUID repositoryId
 	) {
 		return bookmarkService.bookmark(user.getId(), repositoryId);
+	}
+
+	@GetMapping("/api/repositories/{repositoryId}/bookmark")
+	public RepositoryBookmarkStatusResponse getBookmarkStatus(
+		@AuthenticationPrincipal AuthenticatedUser user,
+		@PathVariable UUID repositoryId
+	) {
+		return new RepositoryBookmarkStatusResponse(bookmarkService.isBookmarked(user.getId(), repositoryId));
 	}
 
 	@DeleteMapping("/api/repositories/{repositoryId}/bookmark")

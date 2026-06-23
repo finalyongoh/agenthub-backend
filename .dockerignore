@@ -2,6 +2,7 @@
 .gradle
 build
 docker_data
+img
 .idea
 *.iml
 .DS_Store

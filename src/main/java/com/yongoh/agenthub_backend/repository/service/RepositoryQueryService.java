@@ -24,6 +24,8 @@ import jakarta.persistence.criteria.Predicate;
 
 @Service
 public class RepositoryQueryService {
+	private static final int MAX_PAGE_SIZE = 15;
+
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
 	private final RepositoryAnalysisRepository analysisRepository;
@@ -42,11 +44,12 @@ public class RepositoryQueryService {
 	}
 
 	@Transactional(readOnly = true)
-	public RepositoryListResponse findRepositories(String category, String language, Integer minStars, String sort, String order, int page, int limit) {
-		PageRequest pageRequest = PageRequest.of(Math.max(page - 1, 0), Math.max(limit, 1), sort(sort, order));
+	public RepositoryListResponse findRepositories(String keyword, String category, String language, Integer minStars, String sort, String order, int page, int limit) {
+		int pageNumber = Math.max(page - 1, 0);
+		int pageSize = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
+		PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, sort(sort, order));
 		Specification<AgentRepository> specification = (root, query, builder) -> {
 			Predicate predicate = builder.and(
-				builder.isTrue(root.get("agentRelated")),
 				builder.isFalse(root.get("archived")),
 				builder.isFalse(root.get("fork"))
 			);
@@ -55,6 +58,20 @@ public class RepositoryQueryService {
 			}
 			if (language != null && !language.isBlank()) {
 				predicate = builder.and(predicate, builder.equal(root.get("language"), language));
+			}
+			if (keyword != null && !keyword.isBlank()) {
+				String likeKeyword = "%" + keyword.trim().toLowerCase() + "%";
+				Predicate keywordPredicate = builder.or(
+					builder.like(builder.lower(root.get("fullName")), likeKeyword),
+					builder.like(builder.lower(root.get("owner")), likeKeyword),
+					builder.like(builder.lower(root.get("name")), likeKeyword),
+					builder.like(builder.lower(builder.coalesce(root.get("description"), "")), likeKeyword),
+					builder.like(builder.lower(builder.coalesce(root.get("readmeSummary"), "")), likeKeyword),
+					builder.like(builder.lower(builder.coalesce(root.get("topics"), "")), likeKeyword),
+					builder.like(builder.lower(builder.coalesce(root.get("language"), "")), likeKeyword),
+					builder.like(builder.lower(builder.coalesce(root.get("agentCategory"), "")), likeKeyword)
+				);
+				predicate = builder.and(predicate, keywordPredicate);
 			}
 			if (minStars != null) {
 				predicate = builder.and(predicate, builder.greaterThanOrEqualTo(root.get("stars"), minStars));
@@ -66,8 +83,8 @@ public class RepositoryQueryService {
 			repositories.stream()
 				.map(repository -> RepositorySummaryDto.from(repository, analysisRepository.existsByRepositoryId(repository.getId())))
 				.toList(),
-			page,
-			limit,
+			pageNumber + 1,
+			pageSize,
 			repositories.getTotalElements()
 		);
 	}
