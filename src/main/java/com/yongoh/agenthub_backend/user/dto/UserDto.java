@@ -14,6 +14,7 @@ public class UserDto {
 	private UUID id;
 	private String email;
 	private String nickname;
+	private String profileImageUrl;
 	private String role;
 
 	public static UserDto from(User user) {
@@ -21,6 +22,7 @@ public class UserDto {
 			user.getId(),
 			user.getEmail(),
 			user.getNickname(),
+			user.getProfileImageFilename() == null ? null : "/api/images/" + user.getProfileImageFilename(),
 			user.getRole().name()
 		);
 	}

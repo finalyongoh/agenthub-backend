@@ -12,6 +12,8 @@ import lombok.Getter;
 public class RepositoryDiscussionDto {
 	private UUID id;
 	private UUID userId;
+	private String author;
+	private String authorProfileImageUrl;
 	private UUID repositoryId;
 	private String title;
 	private String body;
@@ -25,6 +27,8 @@ public class RepositoryDiscussionDto {
 		return new RepositoryDiscussionDto(
 			discussion.getId(),
 			discussion.getUser().getId(),
+			discussion.getUser().getNickname(),
+			discussion.getUser().getProfileImageFilename() == null ? null : "/api/images/" + discussion.getUser().getProfileImageFilename(),
 			discussion.getRepositoryId(),
 			discussion.getTitle(),
 			discussion.getBody(),

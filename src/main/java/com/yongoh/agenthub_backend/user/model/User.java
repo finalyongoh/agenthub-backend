@@ -39,6 +39,9 @@ public class User {
 	@Column(nullable = false, length = 100)
 	private String nickname;
 
+	@Column(name = "profile_image_filename", length = 255)
+	private String profileImageFilename;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private UserRole role;
@@ -67,6 +70,14 @@ public class User {
 
 	public boolean isRestricted() {
 		return status != UserStatus.ACTIVE;
+	}
+
+	public void updateProfileImage(String profileImageFilename) {
+		this.profileImageFilename = profileImageFilename;
+	}
+
+	public void changePassword(String encodedPassword) {
+		this.password = encodedPassword;
 	}
 
 	@PrePersist
