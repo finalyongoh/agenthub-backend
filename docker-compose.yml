@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # 1. PostgreSQL 설정
   agenthub-db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: agenthub-postgres
     ports:
       - "5432:5432"
