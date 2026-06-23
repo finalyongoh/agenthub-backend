@@ -14,6 +14,7 @@ public class CommunityCommentDto {
 	private UUID id;
 	private UUID userId;
 	private String author;
+	private String authorProfileImageUrl;
 	private String body;
 	private Instant createdAt;
 
@@ -22,6 +23,7 @@ public class CommunityCommentDto {
 			comment.getId(),
 			comment.getUser().getId(),
 			comment.getUser().getNickname(),
+			comment.getUser().getProfileImageFilename() == null ? null : "/api/images/" + comment.getUser().getProfileImageFilename(),
 			comment.getBody(),
 			comment.getCreatedAt()
 		);
@@ -32,6 +34,7 @@ public class CommunityCommentDto {
 			comment.getId(),
 			comment.getUser().getId(),
 			comment.getUser().getNickname(),
+			comment.getUser().getProfileImageFilename() == null ? null : "/api/images/" + comment.getUser().getProfileImageFilename(),
 			comment.getBody(),
 			comment.getCreatedAt()
 		);

@@ -7,10 +7,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.yongoh.agenthub_backend.community.service.PostImageStorageService;
 import com.yongoh.agenthub_backend.global.exception.GlobalExceptionHandler.ApiException;
 import com.yongoh.agenthub_backend.user.dto.JwtResponse;
 import com.yongoh.agenthub_backend.user.dto.LoginRequest;
+import com.yongoh.agenthub_backend.user.dto.PasswordChangeRequest;
 import com.yongoh.agenthub_backend.user.dto.SignupRequest;
 import com.yongoh.agenthub_backend.user.dto.UserDto;
 import com.yongoh.agenthub_backend.user.model.User;
@@ -22,11 +25,18 @@ public class UserService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtUtil jwtUtil;
+	private final PostImageStorageService imageStorageService;
 
-	public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+	public UserService(
+		UserRepository userRepository,
+		PasswordEncoder passwordEncoder,
+		JwtUtil jwtUtil,
+		PostImageStorageService imageStorageService
+	) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtUtil = jwtUtil;
+		this.imageStorageService = imageStorageService;
 	}
 
 	@Transactional
@@ -60,6 +70,28 @@ public class UserService {
 		return UserDto.from(findActiveUser(userId));
 	}
 
+	@Transactional
+	public UserDto updateProfileImage(UUID userId, MultipartFile image) {
+		User user = findActiveUser(userId);
+		String filename = imageStorageService.store(image);
+		if (filename == null) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "IMAGE_REQUIRED", "프로필 이미지를 선택해주세요.");
+		}
+		user.updateProfileImage(filename);
+		return UserDto.from(user);
+	}
+
+	@Transactional
+	public UserDto changePassword(UUID userId, PasswordChangeRequest request) {
+		User user = findActiveUser(userId);
+		validatePasswordChangeRequest(request);
+		if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "AUTH_400", "현재 비밀번호가 올바르지 않습니다.");
+		}
+		user.changePassword(passwordEncoder.encode(request.getNewPassword()));
+		return UserDto.from(user);
+	}
+
 	private JwtResponse issueToken(User user) {
 		return new JwtResponse(jwtUtil.createAccessToken(user), UserDto.from(user));
 	}
@@ -88,6 +120,15 @@ public class UserService {
 	private void validateLoginRequest(LoginRequest request) {
 		if (request == null || !StringUtils.hasText(request.getEmail()) || !StringUtils.hasText(request.getPassword())) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "COMMON_400", "필수 입력값이 누락되었습니다.");
+		}
+	}
+
+	private void validatePasswordChangeRequest(PasswordChangeRequest request) {
+		if (request == null || !StringUtils.hasText(request.getCurrentPassword()) || !StringUtils.hasText(request.getNewPassword())) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "COMMON_400", "필수 입력값이 누락되었습니다.");
+		}
+		if (request.getNewPassword().length() < 8) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "AUTH_400", "비밀번호는 8자 이상이어야 합니다.");
 		}
 	}
 
