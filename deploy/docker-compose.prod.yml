@@ -2,7 +2,7 @@ name: agenthub
 
 services:
   agenthub-postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: agenthub-postgres
     ports:
       - "127.0.0.1:15432:5432"
@@ -40,10 +40,14 @@ services:
       OPENAI_API_KEY: ${GMS_API_KEY}
       OPENAI_API_BASE: https://gms.ssafy.io/gmsapi/api.openai.com/v1
       AGENTTRACE_SUMMARY_MODEL: gpt-4o-mini
+      DATABASE_URL: postgresql://agenthub_user:${POSTGRES_PASSWORD}@agenthub-postgres:5432/agenthub
       LANGSMITH_TRACING: "false"
       TZ: Asia/Seoul
     expose:
       - "8000"
+    depends_on:
+      agenthub-postgres:
+        condition: service_healthy
     networks:
       - agenthub_internal
     restart: unless-stopped

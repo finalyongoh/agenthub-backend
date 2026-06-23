@@ -12,6 +12,8 @@ import lombok.Getter;
 public class PostDto {
 	private UUID id;
 	private UUID userId;
+	private String author;
+	private String authorProfileImageUrl;
 	private String title;
 	private String body;
 	private boolean hasImage;
@@ -24,6 +26,8 @@ public class PostDto {
 		return new PostDto(
 			post.getId(),
 			post.getUser().getId(),
+			post.getUser().getNickname(),
+			post.getUser().getProfileImageFilename() == null ? null : "/api/images/" + post.getUser().getProfileImageFilename(),
 			post.getTitle(),
 			post.getBody(),
 			post.getImageFilename() != null,

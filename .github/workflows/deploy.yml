@@ -3,6 +3,8 @@ name: Deploy AgentHub
 on:
   push:
     branches: [main]
+  repository_dispatch:
+    types: [agenttrace-updated]
   workflow_dispatch:
 
 jobs:
