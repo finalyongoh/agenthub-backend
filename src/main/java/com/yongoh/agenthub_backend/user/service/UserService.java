@@ -18,7 +18,6 @@ import com.yongoh.agenthub_backend.user.dto.SignupRequest;
 import com.yongoh.agenthub_backend.user.dto.UserDto;
 import com.yongoh.agenthub_backend.user.model.User;
 import com.yongoh.agenthub_backend.user.repository.UserRepository;
-import com.yongoh.agenthub_backend.user.repository.UserSocialAccountRepository;
 import com.yongoh.agenthub_backend.user.util.JwtUtil;
 
 @Service
@@ -27,20 +26,17 @@ public class UserService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtUtil jwtUtil;
 	private final PostImageStorageService imageStorageService;
-	private final UserSocialAccountRepository socialAccountRepository;
 
 	public UserService(
 		UserRepository userRepository,
 		PasswordEncoder passwordEncoder,
 		JwtUtil jwtUtil,
-		PostImageStorageService imageStorageService,
-		UserSocialAccountRepository socialAccountRepository
+		PostImageStorageService imageStorageService
 	) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtUtil = jwtUtil;
 		this.imageStorageService = imageStorageService;
-		this.socialAccountRepository = socialAccountRepository;
 	}
 
 	@Transactional
@@ -71,39 +67,38 @@ public class UserService {
 
 	@Transactional(readOnly = true)
 	public UserDto me(UUID userId) {
-		return userDto(findActiveUser(userId));
+		return me(userId, "EMAIL");
+	}
+
+	@Transactional(readOnly = true)
+	public UserDto me(UUID userId, String loginProvider) {
+		return UserDto.from(findActiveUser(userId), loginProvider);
 	}
 
 	@Transactional
-	public UserDto updateProfileImage(UUID userId, MultipartFile image) {
+	public UserDto updateProfileImage(UUID userId, MultipartFile image, String loginProvider) {
 		User user = findActiveUser(userId);
 		String filename = imageStorageService.store(image);
 		if (filename == null) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "IMAGE_REQUIRED", "프로필 이미지를 선택해주세요.");
 		}
 		user.updateProfileImage(filename);
-		return userDto(user);
+		return UserDto.from(user, loginProvider);
 	}
 
 	@Transactional
-	public UserDto changePassword(UUID userId, PasswordChangeRequest request) {
+	public UserDto changePassword(UUID userId, PasswordChangeRequest request, String loginProvider) {
 		User user = findActiveUser(userId);
 		validatePasswordChangeRequest(request);
 		if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "AUTH_400", "현재 비밀번호가 올바르지 않습니다.");
 		}
 		user.changePassword(passwordEncoder.encode(request.getNewPassword()));
-		return userDto(user);
+		return UserDto.from(user, loginProvider);
 	}
 
 	private JwtResponse issueToken(User user) {
 		return new JwtResponse(jwtUtil.createAccessToken(user), UserDto.from(user));
-	}
-
-	private UserDto userDto(User user) {
-		return socialAccountRepository.findFirstByUser_IdOrderByCreatedAtDesc(user.getId())
-			.map(account -> UserDto.from(user, account.getProvider()))
-			.orElseGet(() -> UserDto.from(user));
 	}
 
 	private User findActiveUser(UUID userId) {

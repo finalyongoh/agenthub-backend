@@ -27,6 +27,7 @@ import tools.jackson.databind.node.ObjectNode;
 @Component
 public class JwtUtil {
 	private static final String HMAC_SHA256 = "HmacSHA256";
+	private static final String DEFAULT_LOGIN_PROVIDER = "EMAIL";
 
 	private final String issuer;
 	private final Duration accessTokenTtl;
@@ -53,7 +54,11 @@ public class JwtUtil {
 	}
 
 	public String createAccessToken(User user) {
-		return createToken(user, "access", accessTokenTtl.getSeconds());
+		return createAccessToken(user, DEFAULT_LOGIN_PROVIDER);
+	}
+
+	public String createAccessToken(User user, String loginProvider) {
+		return createToken(user, "access", accessTokenTtl.getSeconds(), loginProvider);
 	}
 
 	public JwtClaims parse(String token) {
@@ -77,6 +82,7 @@ public class JwtUtil {
 				UUID.fromString(payload.path("sub").asText()),
 				payload.path("typ").asText(),
 				payload.path("role").asText(),
+				payload.path("loginProvider").asText(DEFAULT_LOGIN_PROVIDER),
 				expiresAt
 			);
 		} catch (ApiException exception) {
@@ -86,7 +92,7 @@ public class JwtUtil {
 		}
 	}
 
-	private String createToken(User user, String type, long ttlSeconds) {
+	private String createToken(User user, String type, long ttlSeconds, String loginProvider) {
 		Instant now = clock.instant();
 		Instant expiresAt = now.plusSeconds(ttlSeconds);
 
@@ -100,6 +106,7 @@ public class JwtUtil {
 		payload.put("sub", user.getId().toString());
 		payload.put("typ", type);
 		payload.put("role", user.getRole().name());
+		payload.put("loginProvider", normalizeLoginProvider(loginProvider));
 		payload.put("iat", now.getEpochSecond());
 		payload.put("exp", expiresAt.getEpochSecond());
 
@@ -131,16 +138,25 @@ public class JwtUtil {
 		return new ApiException(HttpStatus.UNAUTHORIZED, "AUTH_401", "유효하지 않은 토큰입니다.");
 	}
 
+	private static String normalizeLoginProvider(String loginProvider) {
+		if (loginProvider == null || loginProvider.isBlank()) {
+			return DEFAULT_LOGIN_PROVIDER;
+		}
+		return loginProvider.trim().toUpperCase();
+	}
+
 	public static class JwtClaims {
 		private final UUID userId;
 		private final String type;
 		private final String role;
+		private final String loginProvider;
 		private final Instant expiresAt;
 
-		public JwtClaims(UUID userId, String type, String role, Instant expiresAt) {
+		public JwtClaims(UUID userId, String type, String role, String loginProvider, Instant expiresAt) {
 			this.userId = userId;
 			this.type = type;
 			this.role = role;
+			this.loginProvider = loginProvider;
 			this.expiresAt = expiresAt;
 		}
 
@@ -154,6 +170,10 @@ public class JwtUtil {
 
 		public String getRole() {
 			return role;
+		}
+
+		public String getLoginProvider() {
+			return loginProvider;
 		}
 
 		public Instant getExpiresAt() {
