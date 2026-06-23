@@ -45,7 +45,7 @@ public class UserController {
 
 	@GetMapping("/me")
 	public UserDto me(@AuthenticationPrincipal AuthenticatedUser user) {
-		return userService.me(user.getId());
+		return userService.me(user.getId(), user.getLoginProvider());
 	}
 
 	@PostMapping(value = "/me/profile-image", consumes = "multipart/form-data")
@@ -53,7 +53,7 @@ public class UserController {
 		@AuthenticationPrincipal AuthenticatedUser user,
 		@RequestPart("image") MultipartFile image
 	) {
-		return userService.updateProfileImage(user.getId(), image);
+		return userService.updateProfileImage(user.getId(), image, user.getLoginProvider());
 	}
 
 	@PatchMapping("/me/password")
@@ -61,6 +61,6 @@ public class UserController {
 		@AuthenticationPrincipal AuthenticatedUser user,
 		@RequestBody PasswordChangeRequest request
 	) {
-		return userService.changePassword(user.getId(), request);
+		return userService.changePassword(user.getId(), request, user.getLoginProvider());
 	}
 }
