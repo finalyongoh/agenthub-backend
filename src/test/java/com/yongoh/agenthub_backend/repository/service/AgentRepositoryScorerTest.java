@@ -40,9 +40,14 @@ class AgentRepositoryScorerTest {
 			false
 		));
 
-		int score = scorer.score(repository, "An LLM agent with tool calling and model context protocol support.");
+		String readme = """
+			An LLM agent with tool calling, memory, planner, and model context protocol support.
+			It includes benchmarks, eval harnesses, pytest integration tests, Docker setup,
+			examples, and reproducible success rate results.
+			""";
+		int score = scorer.score(repository, readme);
 
-		assertThat(score).isGreaterThanOrEqualTo(8);
-		assertThat(scorer.isAgentRelated(score)).isTrue();
+		assertThat(score).isGreaterThanOrEqualTo(50);
+		assertThat(scorer.isAgentRelated(repository, readme)).isTrue();
 	}
 }
