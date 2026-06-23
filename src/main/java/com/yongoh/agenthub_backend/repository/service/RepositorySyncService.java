@@ -122,7 +122,7 @@ public class RepositorySyncService {
 		for (AgentRepository repository : repositories) {
 			readmeJpaRepository.findByRepository(repository).ifPresent(readme -> {
 				int score = scorer.score(repository, readme.getContent());
-				boolean agentRelated = scorer.isAgentRelated(score);
+				boolean agentRelated = scorer.isAgentRelated(repository, readme.getContent());
 				String category = agentRelated ? classifier.classify(readme.getContent()) : null;
 				String summary = summarize(repository, readme, statistics);
 				repository.updateScoring(score, agentRelated, category, summary);
