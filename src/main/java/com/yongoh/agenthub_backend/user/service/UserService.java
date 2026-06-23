@@ -18,6 +18,7 @@ import com.yongoh.agenthub_backend.user.dto.SignupRequest;
 import com.yongoh.agenthub_backend.user.dto.UserDto;
 import com.yongoh.agenthub_backend.user.model.User;
 import com.yongoh.agenthub_backend.user.repository.UserRepository;
+import com.yongoh.agenthub_backend.user.repository.UserSocialAccountRepository;
 import com.yongoh.agenthub_backend.user.util.JwtUtil;
 
 @Service
@@ -26,17 +27,20 @@ public class UserService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtUtil jwtUtil;
 	private final PostImageStorageService imageStorageService;
+	private final UserSocialAccountRepository socialAccountRepository;
 
 	public UserService(
 		UserRepository userRepository,
 		PasswordEncoder passwordEncoder,
 		JwtUtil jwtUtil,
-		PostImageStorageService imageStorageService
+		PostImageStorageService imageStorageService,
+		UserSocialAccountRepository socialAccountRepository
 	) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtUtil = jwtUtil;
 		this.imageStorageService = imageStorageService;
+		this.socialAccountRepository = socialAccountRepository;
 	}
 
 	@Transactional
@@ -67,7 +71,7 @@ public class UserService {
 
 	@Transactional(readOnly = true)
 	public UserDto me(UUID userId) {
-		return UserDto.from(findActiveUser(userId));
+		return userDto(findActiveUser(userId));
 	}
 
 	@Transactional
@@ -78,7 +82,7 @@ public class UserService {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "IMAGE_REQUIRED", "프로필 이미지를 선택해주세요.");
 		}
 		user.updateProfileImage(filename);
-		return UserDto.from(user);
+		return userDto(user);
 	}
 
 	@Transactional
@@ -89,11 +93,17 @@ public class UserService {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "AUTH_400", "현재 비밀번호가 올바르지 않습니다.");
 		}
 		user.changePassword(passwordEncoder.encode(request.getNewPassword()));
-		return UserDto.from(user);
+		return userDto(user);
 	}
 
 	private JwtResponse issueToken(User user) {
 		return new JwtResponse(jwtUtil.createAccessToken(user), UserDto.from(user));
+	}
+
+	private UserDto userDto(User user) {
+		return socialAccountRepository.findFirstByUser_IdOrderByCreatedAtDesc(user.getId())
+			.map(account -> UserDto.from(user, account.getProvider()))
+			.orElseGet(() -> UserDto.from(user));
 	}
 
 	private User findActiveUser(UUID userId) {

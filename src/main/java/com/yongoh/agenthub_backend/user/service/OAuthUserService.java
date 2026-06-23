@@ -41,7 +41,7 @@ public class OAuthUserService {
 			.map(UserSocialAccount::getUser)
 			.orElseGet(() -> createOrLinkUser(provider, providerId, normalizeEmail(email), resolveNickname(nickname, email)));
 
-		return new JwtResponse(jwtUtil.createAccessToken(user), UserDto.from(user));
+		return new JwtResponse(jwtUtil.createAccessToken(user), UserDto.from(user, provider));
 	}
 
 	private User createOrLinkUser(SocialProvider provider, String providerId, String email, String nickname) {

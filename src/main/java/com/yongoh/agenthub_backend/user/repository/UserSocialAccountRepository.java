@@ -10,4 +10,6 @@ import com.yongoh.agenthub_backend.user.model.UserSocialAccount;
 
 public interface UserSocialAccountRepository extends JpaRepository<UserSocialAccount, UUID> {
 	Optional<UserSocialAccount> findByProviderAndProviderId(SocialProvider provider, String providerId);
+
+	Optional<UserSocialAccount> findFirstByUser_IdOrderByCreatedAtDesc(UUID userId);
 }
