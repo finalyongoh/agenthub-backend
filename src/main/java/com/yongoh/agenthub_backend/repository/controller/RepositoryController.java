@@ -42,6 +42,7 @@ public class RepositoryController {
 
 	@GetMapping("/api/repositories")
 	public RepositoryListResponse findRepositories(
+		@RequestParam(required = false) String q,
 		@RequestParam(required = false) String category,
 		@RequestParam(required = false) String language,
 		@RequestParam(required = false) Integer minStars,
@@ -50,7 +51,7 @@ public class RepositoryController {
 		@RequestParam(defaultValue = "1") int page,
 		@RequestParam(defaultValue = "20") int limit
 	) {
-		return repositoryQueryService.findRepositories(category, language, minStars, sort, order, page, limit);
+		return repositoryQueryService.findRepositories(q, category, language, minStars, sort, order, page, limit);
 	}
 
 	@GetMapping("/api/repositories/{repositoryId}")
