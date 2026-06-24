@@ -1,0 +1,90 @@
+name: Refresh Repository Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Number of repositories to collect"
+        required: false
+        default: "18"
+
+jobs:
+  refresh:
+    if: github.repository_owner == 'finalyongoh'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reset repository data and run batch
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            set -eu
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            LIMIT="${{ github.event.inputs.limit || '18' }}"
+            cd "$DEPLOY_PATH"
+
+            docker compose -f docker-compose.prod.yml exec -T agenthub-postgres \
+              psql -U agenthub_user -d agenthub -v ON_ERROR_STOP=1 \
+              -c "TRUNCATE TABLE repositories CASCADE; TRUNCATE TABLE trend_reports, batch_sync_logs RESTART IDENTITY;"
+
+            ADMIN_ID="$(docker compose -f docker-compose.prod.yml exec -T agenthub-postgres \
+              psql -U agenthub_user -d agenthub -Atc "SELECT user_id FROM users WHERE role = 'ADMIN' ORDER BY created_at LIMIT 1;")"
+            if [ -z "$ADMIN_ID" ]; then
+              ADMIN_ID="$(docker compose -f docker-compose.prod.yml exec -T agenthub-postgres \
+                psql -U agenthub_user -d agenthub -Atc "UPDATE users SET role = 'ADMIN' WHERE user_id = (SELECT user_id FROM users ORDER BY created_at LIMIT 1) RETURNING user_id;")"
+            fi
+
+            JWT_TOKEN="$(ADMIN_ID="$ADMIN_ID" python3 - <<'PY'
+            import base64
+            import hashlib
+            import hmac
+            import json
+            import os
+            import time
+
+            admin_id = os.environ["ADMIN_ID"].strip()
+            secret = ""
+            with open(".env", encoding="utf-8") as env_file:
+                for line in env_file:
+                    if line.startswith("AGENTHUB_JWT_SECRET="):
+                        secret = line.split("=", 1)[1].strip()
+                        break
+            if not secret:
+                raise SystemExit("AGENTHUB_JWT_SECRET is missing")
+
+            def b64(data):
+                return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+            now = int(time.time())
+            header = {"alg": "HS256", "typ": "JWT"}
+            payload = {
+                "iss": "agenthub",
+                "sub": admin_id,
+                "typ": "access",
+                "role": "ADMIN",
+                "loginProvider": "EMAIL",
+                "iat": now,
+                "exp": now + 3600,
+            }
+            source = b64(json.dumps(header, separators=(",", ":")).encode()) + "." + b64(json.dumps(payload, separators=(",", ":")).encode())
+            signature = b64(hmac.new(secret.encode(), source.encode(), hashlib.sha256).digest())
+            print(source + "." + signature)
+            PY
+            )"
+
+            docker compose -f docker-compose.prod.yml exec -T agenthub-backend \
+              curl -fsS -X POST http://127.0.0.1:8080/api/admin/github/sync-agent-repositories \
+                -H "Authorization: Bearer $JWT_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "{\"limit\":$LIMIT,\"force\":true}"
+
+            docker compose -f docker-compose.prod.yml exec -T agenthub-postgres \
+              psql -U agenthub_user -d agenthub -Atc \
+              "SELECT 'repositories=' || count(*) FROM repositories
+               UNION ALL SELECT 'agent_related=' || count(*) FROM repositories WHERE is_agent_related = true
+               UNION ALL SELECT 'readmes=' || count(*) FROM repository_readmes
+               UNION ALL SELECT 'analyses=' || count(*) FROM repository_analyses
+               UNION ALL SELECT 'batch_logs=' || count(*) FROM batch_sync_logs;"
