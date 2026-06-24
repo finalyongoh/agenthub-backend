@@ -16,7 +16,7 @@ import com.yongoh.agenthub_backend.moderation.dto.ContentReportRequest;
 import com.yongoh.agenthub_backend.moderation.dto.ContentReportResponse;
 import com.yongoh.agenthub_backend.moderation.model.ContentReport;
 import com.yongoh.agenthub_backend.moderation.repository.ContentReportRepository;
-import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisJpaRepository;
+import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepository;
 import com.yongoh.agenthub_backend.user.model.User;
 import com.yongoh.agenthub_backend.user.repository.UserRepository;
 
@@ -31,7 +31,7 @@ public class ContentReportService {
 	private final PostCommentRepository postCommentRepository;
 	private final RepositoryDiscussionRepository discussionRepository;
 	private final DiscussionCommentRepository discussionCommentRepository;
-	private final RepositoryAnalysisJpaRepository analysisRepository;
+	private final RepositoryAnalysisRepository analysisRepository;
 
 	public ContentReportService(
 		ContentReportRepository reportRepository,
@@ -40,7 +40,7 @@ public class ContentReportService {
 		PostCommentRepository postCommentRepository,
 		RepositoryDiscussionRepository discussionRepository,
 		DiscussionCommentRepository discussionCommentRepository,
-		RepositoryAnalysisJpaRepository analysisRepository
+		RepositoryAnalysisRepository analysisRepository
 	) {
 		this.reportRepository = reportRepository;
 		this.userRepository = userRepository;

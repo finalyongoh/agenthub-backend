@@ -24,7 +24,7 @@ import com.yongoh.agenthub_backend.report.repository.RepositoryMetricSnapshotJpa
 import com.yongoh.agenthub_backend.report.repository.TrendReportJpaRepository;
 import com.yongoh.agenthub_backend.repository.model.AgentRepository;
 import com.yongoh.agenthub_backend.repository.repository.AgentRepositoryJpaRepository;
-import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisJpaRepository;
+import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepository;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -34,7 +34,7 @@ public class TrendReportService {
 	private static final int REPORT_REPOSITORY_LIMIT = 20;
 
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
-	private final RepositoryAnalysisJpaRepository analysisJpaRepository;
+	private final RepositoryAnalysisRepository analysisRepository;
 	private final RepositoryMetricSnapshotJpaRepository snapshotJpaRepository;
 	private final TrendReportJpaRepository trendReportJpaRepository;
 	private final AgentTraceTrendReportClient reportClient;
@@ -42,14 +42,14 @@ public class TrendReportService {
 
 	public TrendReportService(
 		AgentRepositoryJpaRepository repositoryJpaRepository,
-		RepositoryAnalysisJpaRepository analysisJpaRepository,
+		RepositoryAnalysisRepository analysisRepository,
 		RepositoryMetricSnapshotJpaRepository snapshotJpaRepository,
 		TrendReportJpaRepository trendReportJpaRepository,
 		AgentTraceTrendReportClient reportClient,
 		ObjectMapper objectMapper
 	) {
 		this.repositoryJpaRepository = repositoryJpaRepository;
-		this.analysisJpaRepository = analysisJpaRepository;
+		this.analysisRepository = analysisRepository;
 		this.snapshotJpaRepository = snapshotJpaRepository;
 		this.trendReportJpaRepository = trendReportJpaRepository;
 		this.reportClient = reportClient;
@@ -140,8 +140,20 @@ public class TrendReportService {
 		int endStars = latest == null ? repository.getStars() : latest.getStars();
 		int startForks = baseline == null ? repository.getForks() : baseline.getForks();
 		int endForks = latest == null ? repository.getForks() : latest.getForks();
-		String analysisSummary = analysisJpaRepository.findFirstByRepositoryOrderByRequestedAtDesc(repository)
-			.map(analysis -> analysis.getSummary())
+		String analysisSummary = analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repository.getId())
+			.map(analysis -> {
+				try {
+					if (analysis.getResultJson() != null) {
+						Map<String, Object> result = objectMapper.readValue(analysis.getResultJson(), new TypeReference<Map<String, Object>>() {});
+						if (result.get("summary") != null) {
+							return String.valueOf(result.get("summary"));
+						}
+					}
+				} catch (Exception e) {
+					// fallback
+				}
+				return repository.getReadmeSummary();
+			})
 			.orElse(repository.getReadmeSummary());
 
 		Map<String, Object> input = new LinkedHashMap<>();
