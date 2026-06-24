@@ -245,7 +245,7 @@ public class RepositorySyncService {
 
 	private void notifyIfChanged(AgentRepository repository, String fieldName, String oldValue, String newValue) {
 		if (!Objects.equals(normalize(oldValue), normalize(newValue))) {
-			notificationService.notifyChanged(repository, "metadata_changed", fieldName, oldValue, newValue, null, newValue);
+			notificationService.notifyChanged(repository, "metadata_changed", fieldName, oldValue, newValue, null, null);
 		}
 	}
 
