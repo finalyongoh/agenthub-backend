@@ -15,12 +15,13 @@ import java.time.Instant;
 public class RepositoryAnalysis {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id")
     private UUID analysisId;
 
-    @Column(nullable = false)
+    @Column(name = "repository_id", nullable = false)
     private UUID repositoryId;
 
-    @Column(nullable = false)
+    @Column(name = "snapshot_id")
     private UUID snapshotId;
 
     @Column(nullable = false)
