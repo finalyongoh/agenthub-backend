@@ -117,7 +117,7 @@ jobs:
                   printf 'SPRING_PROFILES_ACTIVE=%s\n' 'prod'
                 fi
               } > .env
-              docker compose -f docker-compose.prod.yml up -d --build
+              docker compose -f docker-compose.prod.yml up -d --build agenthub-postgres agenthub-redis agenttrace agenthub-backend
               for attempt in $(seq 1 30); do
                 backend_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' agenthub-backend 2>/dev/null || true)"
                 agenttrace_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' agenttrace 2>/dev/null || true)"
