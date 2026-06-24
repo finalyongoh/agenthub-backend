@@ -102,7 +102,7 @@ services:
     volumes:
       - agenthub_images:/app/img
     healthcheck:
-      test: ["CMD", "curl", "-sS", "-o", "/dev/null", "http://127.0.0.1:8080/api/trend-reports/latest"]
+      test: ["CMD", "curl", "-sS", "-o", "/dev/null", "http://127.0.0.1:8080/api/health"]
       interval: 15s
       timeout: 5s
       retries: 10
