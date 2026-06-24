@@ -61,8 +61,8 @@ public class RepositoryDetailDto {
 			repository.getAgentCategory(),
 			repository.getReadmeSummary(),
 			preview,
-			analysis == null ? null : analysis.getId(),
-			analysis == null ? null : analysis.getStatus().name().toLowerCase()
+			analysis == null ? null : analysis.getAnalysisId(),
+			analysis == null ? null : analysis.getStatus().toLowerCase()
 		);
 	}
 }
