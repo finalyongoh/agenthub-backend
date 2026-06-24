@@ -95,6 +95,11 @@ jobs:
             (
               flock -w 600 9
               mkdir -p "$DEPLOY_PATH"
+              rm -rf \
+                "$DEPLOY_PATH/agenthub-backend" \
+                "$DEPLOY_PATH/agenthub-frontend" \
+                "$DEPLOY_PATH/agenttrace" \
+                "$DEPLOY_PATH/docker-compose.prod.yml"
               cp -a "$INCOMING_PATH"/. "$DEPLOY_PATH"/
               rm -rf "$INCOMING_PATH"
               cd "$DEPLOY_PATH"
