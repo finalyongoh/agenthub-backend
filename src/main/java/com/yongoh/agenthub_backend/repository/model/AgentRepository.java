@@ -47,6 +47,9 @@ public class AgentRepository {
 	@Column(columnDefinition = "text")
 	private String description;
 
+	@Column(name = "description_ko", columnDefinition = "text")
+	private String descriptionKo;
+
 	@Column(name = "html_url", length = 500)
 	private String htmlUrl;
 
@@ -145,6 +148,10 @@ public class AgentRepository {
 		this.githubUpdatedAt = dto.getGithubUpdatedAt();
 		this.archived = dto.isArchived();
 		this.fork = dto.isFork();
+	}
+
+	public void updateDescriptionKo(String descriptionKo) {
+		this.descriptionKo = descriptionKo;
 	}
 
 	public void markReadmeFetched() {

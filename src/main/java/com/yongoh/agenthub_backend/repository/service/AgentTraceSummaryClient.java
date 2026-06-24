@@ -52,7 +52,12 @@ public class AgentTraceSummaryClient {
 		try {
 			Map<String, Object> request = request(repository, readme, fileTree);
 			String requestJson = objectMapper.writeValueAsString(request);
-			log.info("AgentTrace repository summary request payload={}", requestJson);
+			log.info(
+				"AgentTrace repository summary request: repository={}, readmeLength={}, fileCount={}",
+				repository.getFullName(),
+				readme.getContent() == null ? 0 : readme.getContent().length(),
+				fileTreePaths(fileTree).size()
+			);
 			Map<String, Object> response = restClient.post()
 				.uri(ENDPOINT)
 				.contentType(MediaType.APPLICATION_JSON)

@@ -29,6 +29,7 @@ import com.yongoh.agenthub_backend.repository.repository.AgentRepositoryJpaRepos
 import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryFileTreeJpaRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryReadmeJpaRepository;
+import com.yongoh.agenthub_backend.repository.util.ReadmeTextSanitizer;
 
 @Service
 public class RepositorySyncService {
@@ -45,6 +46,7 @@ public class RepositorySyncService {
 	private final RepositoryFileTreeJpaRepository fileTreeJpaRepository;
 	private final RepositoryAnalysisRepository analysisRepository;
 	private final RepositoryNotificationService notificationService;
+	private final DescriptionTranslationClient translationClient;
 	private final GithubProperties properties;
 
 	public RepositorySyncService(
@@ -59,6 +61,7 @@ public class RepositorySyncService {
 		RepositoryFileTreeJpaRepository fileTreeJpaRepository,
 		RepositoryAnalysisRepository analysisRepository,
 		RepositoryNotificationService notificationService,
+		DescriptionTranslationClient translationClient,
 		GithubProperties properties
 	) {
 		this.searchService = searchService;
@@ -72,6 +75,7 @@ public class RepositorySyncService {
 		this.fileTreeJpaRepository = fileTreeJpaRepository;
 		this.analysisRepository = analysisRepository;
 		this.notificationService = notificationService;
+		this.translationClient = translationClient;
 		this.properties = properties;
 	}
 
@@ -140,25 +144,41 @@ public class RepositorySyncService {
 			RepositoryFileTree fileTree = fileTreeJpaRepository.findByRepository(repository).orElse(null);
 			AgentTraceSummaryClient.RepositorySummaryResult result = summaryClient.summarize(repository, readme, fileTree);
 			if (result.completed()) {
-				return result.readmeSummary();
+				return ReadmeTextSanitizer.toSummary(result.readmeSummary());
 			}
 			log.warn("AgentTrace summary failed: repository={}, error={}", repository.getFullName(), result.errorMessage());
 			statistics.incrementFailedCount();
-			return repository.getReadmeSummary();
+			return fallbackSummary(repository, readme);
 		} catch (AgentTraceSummaryException exception) {
-			log.warn("AgentTrace summary request failed: repository={}", repository.getFullName(), exception);
+			log.warn("AgentTrace summary request failed: repository={}, error={}", repository.getFullName(), exception.getMessage());
 			statistics.incrementFailedCount();
-			return repository.getReadmeSummary();
+			return fallbackSummary(repository, readme);
 		}
+	}
+
+	private String fallbackSummary(AgentRepository repository, RepositoryReadme readme) {
+		String existingSummary = ReadmeTextSanitizer.toSummary(repository.getReadmeSummary());
+		if (ReadmeTextSanitizer.hasText(existingSummary)) {
+			return existingSummary;
+		}
+		String readmeSummary = ReadmeTextSanitizer.toSummary(readme.getContent());
+		if (ReadmeTextSanitizer.hasText(readmeSummary)) {
+			return readmeSummary;
+		}
+		return ReadmeTextSanitizer.toSummary(repository.getDescription());
 	}
 
 	private AgentRepository upsert(GithubRepositoryDto dto, SyncStatistics statistics) {
 		AgentRepository repository = repositoryJpaRepository.findByGithubId(dto.getGithubId())
 			.orElseGet(() -> AgentRepository.create(dto));
+		String oldDescription = repository.getDescription();
 		if (repository.getCreatedAt() != null) {
 			notifyMetadataChanges(repository, dto);
 		}
 		repository.updateMetadata(dto);
+		if (!Objects.equals(normalize(oldDescription), normalize(dto.getDescription())) || !ReadmeTextSanitizer.hasText(repository.getDescriptionKo())) {
+			repository.updateDescriptionKo(translationClient.translateAboutToKorean(dto.getDescription()));
+		}
 		statistics.incrementSavedCount();
 		return repositoryJpaRepository.save(repository);
 	}

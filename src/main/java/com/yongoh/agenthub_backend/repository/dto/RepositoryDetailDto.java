@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.yongoh.agenthub_backend.repository.model.AgentRepository;
 import com.yongoh.agenthub_backend.repository.model.RepositoryAnalysis;
 import com.yongoh.agenthub_backend.repository.model.RepositoryReadme;
+import com.yongoh.agenthub_backend.repository.util.ReadmeTextSanitizer;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -18,6 +19,7 @@ public class RepositoryDetailDto {
 	private String name;
 	private String owner;
 	private String description;
+	private String descriptionKo;
 	private String htmlUrl;
 	private String cloneUrl;
 	private String homepage;
@@ -39,13 +41,17 @@ public class RepositoryDetailDto {
 	public static RepositoryDetailDto from(AgentRepository repository, RepositoryReadme readme, RepositoryAnalysis analysis) {
 		RepositorySummaryDto summary = RepositorySummaryDto.from(repository, analysis != null);
 		String content = readme == null || readme.getContent() == null ? "" : readme.getContent();
-		String preview = content.length() > 4000 ? content.substring(0, 4000) : content;
+		String readmeSummary = ReadmeTextSanitizer.toSummary(repository.getReadmeSummary());
+		String preview = ReadmeTextSanitizer.hasText(readmeSummary)
+			? readmeSummary
+			: ReadmeTextSanitizer.toSummary(content);
 		return new RepositoryDetailDto(
 			repository.getId(),
 			repository.getFullName(),
 			repository.getName(),
 			repository.getOwner(),
 			repository.getDescription(),
+			repository.getDescriptionKo(),
 			repository.getHtmlUrl(),
 			repository.getCloneUrl(),
 			repository.getHomepage(),
@@ -59,7 +65,7 @@ public class RepositoryDetailDto {
 			repository.getPushedAt(),
 			repository.getAgentScore(),
 			repository.getAgentCategory(),
-			repository.getReadmeSummary(),
+			readmeSummary,
 			preview,
 			analysis == null ? null : analysis.getAnalysisId(),
 			analysis == null ? null : analysis.getStatus().toLowerCase()
