@@ -103,15 +103,24 @@ jobs:
               cp -a "$INCOMING_PATH"/. "$DEPLOY_PATH"/
               rm -rf "$INCOMING_PATH"
               cd "$DEPLOY_PATH"
+              if [ -f .env ]; then
+                set -a
+                . ./.env
+                set +a
+              fi
+              GOOGLE_CLIENT_ID_FROM_SECRET='${{ secrets.GOOGLE_CLIENT_ID }}'
+              GOOGLE_CLIENT_SECRET_FROM_SECRET='${{ secrets.GOOGLE_CLIENT_SECRET }}'
+              GITHUB_CLIENT_ID_FROM_SECRET='${{ secrets.OAUTH_GITHUB_CLIENT_ID }}'
+              GITHUB_CLIENT_SECRET_FROM_SECRET='${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}'
+              GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID_FROM_SECRET:-${GOOGLE_CLIENT_ID:-}}"
+              GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET_FROM_SECRET:-${GOOGLE_CLIENT_SECRET:-}}"
+              GITHUB_CLIENT_ID="${GITHUB_CLIENT_ID_FROM_SECRET:-${GITHUB_CLIENT_ID:-}}"
+              GITHUB_CLIENT_SECRET="${GITHUB_CLIENT_SECRET_FROM_SECRET:-${GITHUB_CLIENT_SECRET:-}}"
               {
                 printf 'POSTGRES_PASSWORD=%s\n' '${{ secrets.POSTGRES_PASSWORD }}'
                 printf 'AGENTHUB_JWT_SECRET=%s\n' '${{ secrets.AGENTHUB_JWT_SECRET }}'
                 printf 'GITHUB_TOKEN_FOR_APP=%s\n' '${{ secrets.APP_GITHUB_TOKEN }}'
                 printf 'GMS_API_KEY=%s\n' '${{ secrets.GMS_API_KEY }}'
-                GOOGLE_CLIENT_ID='${{ secrets.GOOGLE_CLIENT_ID }}'
-                GOOGLE_CLIENT_SECRET='${{ secrets.GOOGLE_CLIENT_SECRET }}'
-                GITHUB_CLIENT_ID='${{ secrets.OAUTH_GITHUB_CLIENT_ID }}'
-                GITHUB_CLIENT_SECRET='${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}'
                 if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ] && [ -n "$GITHUB_CLIENT_ID" ] && [ -n "$GITHUB_CLIENT_SECRET" ]; then
                   printf 'SPRING_PROFILES_ACTIVE=%s\n' 'prod,oauth'
                   printf 'GOOGLE_CLIENT_ID=%s\n' "$GOOGLE_CLIENT_ID"
