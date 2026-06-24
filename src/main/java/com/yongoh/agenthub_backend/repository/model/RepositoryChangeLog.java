@@ -47,10 +47,10 @@ public class RepositoryChangeLog {
 	@Column(name = "new_value", columnDefinition = "text")
 	private String newValue;
 
-	@Column(name = "old_sha", length = 100)
+	@Column(name = "old_sha", columnDefinition = "text")
 	private String oldSha;
 
-	@Column(name = "new_sha", length = 100)
+	@Column(name = "new_sha", columnDefinition = "text")
 	private String newSha;
 
 	@Column(name = "detected_at", nullable = false, updatable = false)
