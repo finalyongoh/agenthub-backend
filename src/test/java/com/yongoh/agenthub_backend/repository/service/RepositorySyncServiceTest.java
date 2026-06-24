@@ -129,7 +129,7 @@ class RepositorySyncServiceTest {
 		when(readmeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(readme));
 		when(fileTreeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(fileTree));
 		when(scorer.score(repository, readme.getContent())).thenReturn(9);
-		when(scorer.isAgentRelated(9)).thenReturn(true);
+		when(scorer.isAgentRelated(repository, readme.getContent())).thenReturn(true);
 		when(classifier.classify(readme.getContent())).thenReturn("framework");
 		when(summaryClient.summarize(repository, readme, fileTree))
 			.thenReturn(new AgentTraceSummaryClient.RepositorySummaryResult(true, "AgentTrace summary", null));
@@ -157,7 +157,7 @@ class RepositorySyncServiceTest {
 		when(readmeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(readme));
 		when(fileTreeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(fileTree));
 		when(scorer.score(repository, readme.getContent())).thenReturn(9);
-		when(scorer.isAgentRelated(9)).thenReturn(true);
+		when(scorer.isAgentRelated(repository, readme.getContent())).thenReturn(true);
 		when(classifier.classify(readme.getContent())).thenReturn("framework");
 		when(summaryClient.summarize(repository, readme, fileTree))
 			.thenReturn(new AgentTraceSummaryClient.RepositorySummaryResult(false, null, "agenttrace failed"));

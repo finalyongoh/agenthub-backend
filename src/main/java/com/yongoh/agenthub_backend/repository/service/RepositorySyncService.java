@@ -91,7 +91,8 @@ public class RepositorySyncService {
 	private Specification<AgentRepository> activeRefreshCandidate() {
 		return (root, query, criteriaBuilder) -> criteriaBuilder.and(
 			criteriaBuilder.isFalse(root.get("archived")),
-			criteriaBuilder.isFalse(root.get("fork"))
+			criteriaBuilder.isFalse(root.get("fork")),
+			criteriaBuilder.isTrue(root.get("agentRelated"))
 		);
 	}
 
@@ -123,7 +124,7 @@ public class RepositorySyncService {
 		for (AgentRepository repository : repositories) {
 			readmeJpaRepository.findByRepository(repository).ifPresent(readme -> {
 				int score = scorer.score(repository, readme.getContent());
-				boolean agentRelated = scorer.isAgentRelated(score);
+				boolean agentRelated = scorer.isAgentRelated(repository, readme.getContent());
 				String category = agentRelated ? classifier.classify(readme.getContent()) : null;
 				String summary = summarize(repository, readme, statistics);
 				repository.updateScoring(score, agentRelated, category, summary);
@@ -253,7 +254,7 @@ public class RepositorySyncService {
 
 	private void notifyIfChanged(AgentRepository repository, String fieldName, String oldValue, String newValue) {
 		if (!Objects.equals(normalize(oldValue), normalize(newValue))) {
-			notificationService.notifyChanged(repository, "metadata_changed", fieldName, oldValue, newValue, null, newValue);
+			notificationService.notifyChanged(repository, "metadata_changed", fieldName, oldValue, newValue, null, null);
 		}
 	}
 

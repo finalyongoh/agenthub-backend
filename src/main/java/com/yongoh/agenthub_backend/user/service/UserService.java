@@ -67,29 +67,34 @@ public class UserService {
 
 	@Transactional(readOnly = true)
 	public UserDto me(UUID userId) {
-		return UserDto.from(findActiveUser(userId));
+		return me(userId, "EMAIL");
+	}
+
+	@Transactional(readOnly = true)
+	public UserDto me(UUID userId, String loginProvider) {
+		return UserDto.from(findActiveUser(userId), loginProvider);
 	}
 
 	@Transactional
-	public UserDto updateProfileImage(UUID userId, MultipartFile image) {
+	public UserDto updateProfileImage(UUID userId, MultipartFile image, String loginProvider) {
 		User user = findActiveUser(userId);
 		String filename = imageStorageService.store(image);
 		if (filename == null) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "IMAGE_REQUIRED", "프로필 이미지를 선택해주세요.");
 		}
 		user.updateProfileImage(filename);
-		return UserDto.from(user);
+		return UserDto.from(user, loginProvider);
 	}
 
 	@Transactional
-	public UserDto changePassword(UUID userId, PasswordChangeRequest request) {
+	public UserDto changePassword(UUID userId, PasswordChangeRequest request, String loginProvider) {
 		User user = findActiveUser(userId);
 		validatePasswordChangeRequest(request);
 		if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "AUTH_400", "현재 비밀번호가 올바르지 않습니다.");
 		}
 		user.changePassword(passwordEncoder.encode(request.getNewPassword()));
-		return UserDto.from(user);
+		return UserDto.from(user, loginProvider);
 	}
 
 	private JwtResponse issueToken(User user) {

@@ -40,6 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 					AuthenticatedUser principal = new AuthenticatedUser(
 						claims.getUserId(),
 						claims.getUserId().toString(),
+						claims.getLoginProvider(),
 						List.of(new SimpleGrantedAuthority("ROLE_" + claims.getRole()))
 					);
 					UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

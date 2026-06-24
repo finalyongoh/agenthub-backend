@@ -40,9 +40,79 @@ class AgentRepositoryScorerTest {
 			false
 		));
 
-		int score = scorer.score(repository, "An LLM agent with tool calling and model context protocol support.");
+		String readme = """
+			An LLM agent with tool calling, memory, planner, and model context protocol support.
+			It includes benchmarks, eval harnesses, pytest integration tests, Docker setup,
+			examples, and reproducible success rate results.
+			""";
+		int score = scorer.score(repository, readme);
 
-		assertThat(score).isGreaterThanOrEqualTo(8);
-		assertThat(scorer.isAgentRelated(score)).isTrue();
+		assertThat(score).isGreaterThanOrEqualTo(50);
+		assertThat(scorer.isAgentRelated(repository, readme)).isTrue();
+	}
+
+	@Test
+	void resourceCatalogWithoutStrongAiSignalIsNotAgentRelated() {
+		AgentRepository repository = AgentRepository.create(new GithubRepositoryDto(
+			2L,
+			"sindresorhus/awesome",
+			"sindresorhus",
+			"awesome",
+			"Awesome lists about all kinds of interesting topics",
+			"https://github.com/sindresorhus/awesome",
+			null,
+			null,
+			"main",
+			null,
+			List.of("awesome", "list"),
+			477_000,
+			30_000,
+			100,
+			100,
+			"CC0-1.0",
+			Instant.now(),
+			Instant.now(),
+			Instant.now(),
+			false,
+			false
+		));
+
+		String readme = "A curated awesome list of resources, guides, tutorials, and public APIs.";
+
+		assertThat(scorer.isAgentRelated(repository, readme)).isFalse();
+	}
+
+	@Test
+	void resourceCatalogWithStrongLlmSignalCanRemainAgentRelated() {
+		AgentRepository repository = AgentRepository.create(new GithubRepositoryDto(
+			3L,
+			"owner/awesome-llm-agents",
+			"owner",
+			"awesome-llm-agents",
+			"Curated LLM agent frameworks and RAG applications",
+			"https://github.com/owner/awesome-llm-agents",
+			null,
+			null,
+			"main",
+			"Python",
+			List.of("llm", "ai-agent", "rag"),
+			2000,
+			200,
+			20,
+			5,
+			"MIT",
+			Instant.now(),
+			Instant.now(),
+			Instant.now(),
+			false,
+			false
+		));
+
+		String readme = """
+			Awesome LLM agent frameworks, autonomous agents, RAG applications,
+			model context protocol integrations, eval examples, and benchmarks.
+			""";
+
+		assertThat(scorer.isAgentRelated(repository, readme)).isTrue();
 	}
 }

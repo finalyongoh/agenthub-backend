@@ -67,13 +67,36 @@ public class GithubProperties {
 		private int minStars = 20;
 		private int retryCount = 2;
 		private int fileTreeMaxPaths = 200;
+		private List<String> seedRepositories = List.of(
+			"openai/openai-agents-python",
+			"langchain-ai/langchain",
+			"langchain-ai/langgraph",
+			"run-llama/llama_index",
+			"crewAIInc/crewAI",
+			"microsoft/autogen",
+			"agno-agi/agno",
+			"pydantic/pydantic-ai",
+			"stanfordnlp/dspy",
+			"microsoft/semantic-kernel",
+			"mem0ai/mem0",
+			"vllm-project/vllm",
+			"huggingface/transformers",
+			"huggingface/diffusers",
+			"sgl-project/sglang",
+			"infiniflow/ragflow",
+			"modelcontextprotocol/python-sdk",
+			"modelcontextprotocol/servers"
+		);
 		private List<String> queries = List.of(
-			"\"ai agent\" in:readme stars:>20",
-			"\"llm agent\" in:readme stars:>20",
-			"\"multi-agent\" in:readme stars:>20",
-			"\"agent framework\" in:readme stars:>20",
-			"\"model context protocol\" in:readme stars:>20",
-			"\"coding agent\" in:readme stars:>20"
+			"topic:ai-agent stars:>20",
+			"topic:llm stars:>20",
+			"topic:rag stars:>20",
+			"topic:model-context-protocol stars:>20",
+			"\"agent framework\" in:name,description,readme stars:>20",
+			"\"autonomous agent\" in:name,description,readme stars:>20",
+			"\"multi-agent\" in:name,description,readme stars:>20",
+			"\"retrieval augmented generation\" in:name,description,readme stars:>20",
+			"\"llm application\" in:name,description,readme stars:>20"
 		);
 
 		public boolean isEnabled() {
@@ -146,6 +169,14 @@ public class GithubProperties {
 
 		public void setFileTreeMaxPaths(int fileTreeMaxPaths) {
 			this.fileTreeMaxPaths = fileTreeMaxPaths;
+		}
+
+		public List<String> getSeedRepositories() {
+			return seedRepositories;
+		}
+
+		public void setSeedRepositories(List<String> seedRepositories) {
+			this.seedRepositories = seedRepositories;
 		}
 
 		public List<String> getQueries() {
