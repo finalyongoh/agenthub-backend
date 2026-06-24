@@ -34,7 +34,12 @@ public class AgentRepositoryScorer {
 
 	public boolean isAgentRelated(AgentRepository repository, String readmeMarkdown) {
 		String target = targetText(repository, readmeMarkdown);
-		if (isGeneralResourceCatalog(target) && !hasStrongAiMlAgentSignal(target)) {
+		String identity = targetText(repository, "");
+		boolean strongIdentitySignal = hasStrongAiMlAgentSignal(identity);
+		if (isGeneralResourceCatalog(identity) && !strongIdentitySignal) {
+			return false;
+		}
+		if (isGeneralResourceCatalog(target) && !strongIdentitySignal && !hasImplementationSignal(target)) {
 			return false;
 		}
 		int relevanceScore = 0;
@@ -62,7 +67,9 @@ public class AgentRepositoryScorer {
 		if (repository.isFork()) {
 			relevanceScore -= 5;
 		}
-		return relevanceScore >= properties.getScoreThreshold() && hasStrongAiMlAgentSignal(target);
+		return relevanceScore >= properties.getScoreThreshold()
+			&& hasStrongAiMlAgentSignal(target)
+			&& (strongIdentitySignal || hasImplementationSignal(target));
 	}
 
 	public boolean isAgentRelated(int score) {
@@ -176,6 +183,30 @@ public class AgentRepositoryScorer {
 			"inference engine",
 			"transformer",
 			"diffusion"
+		);
+	}
+
+	private boolean hasImplementationSignal(String target) {
+		return containsAny(
+			target,
+			"planner",
+			"executor",
+			"orchestrator",
+			"agent loop",
+			"tool calling",
+			"function calling",
+			"tool registry",
+			"rag pipeline",
+			"retriever",
+			"vector store",
+			"memory",
+			"workflow engine",
+			"mcp server",
+			"mcp client",
+			"model serving",
+			"inference server",
+			"eval harness",
+			"benchmark harness"
 		);
 	}
 
