@@ -98,9 +98,30 @@ public class GithubRepositorySearchService {
 			"diffusion"
 		);
 		if (isResourceCatalog(target)) {
-			return strongAiAgentSignal;
+			return hasCoreAgentSignal(target);
+		}
+		if (isOffTopicProductivityRepository(target) && !hasCoreAgentSignal(target)) {
+			return false;
 		}
 		return strongAiAgentSignal || aiMlSignal;
+	}
+
+	private boolean hasCoreAgentSignal(String target) {
+		return containsAny(
+			target,
+			"agent",
+			"llm",
+			"rag",
+			"retrieval augmented generation",
+			"model context protocol",
+			"mcp",
+			"langchain",
+			"langgraph",
+			"crewai",
+			"autogen",
+			"pydantic-ai",
+			"semantic kernel"
+		);
 	}
 
 	private boolean isResourceCatalog(String target) {
@@ -118,6 +139,27 @@ public class GithubRepositorySearchService {
 			"tutorial",
 			"interview",
 			"algorithm"
+		);
+	}
+
+	private boolean isOffTopicProductivityRepository(String target) {
+		return containsAny(
+			target,
+			"checklist",
+			"front-end",
+			"frontend",
+			"career",
+			"ppt",
+			"presentation",
+			"slide",
+			"resume",
+			"portfolio",
+			"devtools",
+			"markdown",
+			"wechat",
+			"podcast",
+			"second brain",
+			"obsidian"
 		);
 	}
 
