@@ -27,7 +27,7 @@ import com.yongoh.agenthub_backend.repository.model.AgentRepository;
 import com.yongoh.agenthub_backend.repository.model.RepositoryAnalysis;
 import com.yongoh.agenthub_backend.repository.model.RepositoryFileTree;
 import com.yongoh.agenthub_backend.repository.repository.AgentRepositoryJpaRepository;
-import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisJpaRepository;
+import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryFileTreeJpaRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryReadmeJpaRepository;
 
@@ -41,7 +41,7 @@ class RepositorySyncServiceTest {
 	private final AgentRepositoryJpaRepository repositoryJpaRepository = mock(AgentRepositoryJpaRepository.class);
 	private final RepositoryReadmeJpaRepository readmeJpaRepository = mock(RepositoryReadmeJpaRepository.class);
 	private final RepositoryFileTreeJpaRepository fileTreeJpaRepository = mock(RepositoryFileTreeJpaRepository.class);
-	private final RepositoryAnalysisJpaRepository analysisJpaRepository = mock(RepositoryAnalysisJpaRepository.class);
+	private final RepositoryAnalysisRepository analysisRepository = mock(RepositoryAnalysisRepository.class);
 	private final RepositoryNotificationService notificationService = mock(RepositoryNotificationService.class);
 	private final GithubProperties properties = new GithubProperties();
 
@@ -55,7 +55,7 @@ class RepositorySyncServiceTest {
 		repositoryJpaRepository,
 		readmeJpaRepository,
 		fileTreeJpaRepository,
-		analysisJpaRepository,
+		analysisRepository,
 		notificationService,
 		properties
 	);
@@ -107,11 +107,11 @@ class RepositorySyncServiceTest {
 		when(fileTreeService.findShallowFileTree(repository))
 			.thenReturn(List.of(new GithubFileTreeItemDto("README.md", "file")));
 		when(fileTreeJpaRepository.findByRepository(repository)).thenReturn(Optional.empty());
-		when(analysisJpaRepository.existsByRepository(repository)).thenReturn(false);
+		when(analysisRepository.existsByRepositoryId(repository.getId())).thenReturn(false);
 
 		service.fetchReadmes(List.of(repository), false, new SyncStatistics());
 
-		verify(analysisJpaRepository).save(any(RepositoryAnalysis.class));
+		verify(analysisRepository).save(any(RepositoryAnalysis.class));
 	}
 
 	@Test

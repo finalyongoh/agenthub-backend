@@ -17,7 +17,7 @@ import com.yongoh.agenthub_backend.repository.dto.RepositorySummaryDto;
 import com.yongoh.agenthub_backend.repository.model.AgentRepository;
 import com.yongoh.agenthub_backend.repository.model.RepositoryAnalysis;
 import com.yongoh.agenthub_backend.repository.repository.AgentRepositoryJpaRepository;
-import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisJpaRepository;
+import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryReadmeJpaRepository;
 
 import jakarta.persistence.criteria.Predicate;
@@ -28,16 +28,19 @@ public class RepositoryQueryService {
 
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
-	private final RepositoryAnalysisJpaRepository analysisJpaRepository;
+	private final RepositoryAnalysisRepository analysisRepository;
+	private final AnalysisService analysisService;
 
 	public RepositoryQueryService(
 		AgentRepositoryJpaRepository repositoryJpaRepository,
 		RepositoryReadmeJpaRepository readmeJpaRepository,
-		RepositoryAnalysisJpaRepository analysisJpaRepository
+		RepositoryAnalysisRepository analysisRepository,
+		AnalysisService analysisService
 	) {
 		this.repositoryJpaRepository = repositoryJpaRepository;
 		this.readmeJpaRepository = readmeJpaRepository;
-		this.analysisJpaRepository = analysisJpaRepository;
+		this.analysisRepository = analysisRepository;
+		this.analysisService = analysisService;
 	}
 
 	@Transactional(readOnly = true)
@@ -79,7 +82,7 @@ public class RepositoryQueryService {
 		var repositories = repositoryJpaRepository.findAll(specification, pageRequest);
 		return new RepositoryListResponse(
 			repositories.stream()
-				.map(repository -> RepositorySummaryDto.from(repository, analysisJpaRepository.existsByRepository(repository)))
+				.map(repository -> RepositorySummaryDto.from(repository, analysisRepository.existsByRepositoryId(repository.getId())))
 				.toList(),
 			pageNumber + 1,
 			pageSize,
@@ -91,17 +94,19 @@ public class RepositoryQueryService {
 	public RepositoryDetailDto findRepository(UUID repositoryId) {
 		AgentRepository repository = findRepositoryOrThrow(repositoryId);
 		var readme = readmeJpaRepository.findByRepository(repository).orElse(null);
-		var analysis = analysisJpaRepository.findFirstByRepositoryOrderByRequestedAtDesc(repository).orElse(null);
+		var analysis = analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId).orElse(null);
 		return RepositoryDetailDto.from(repository, readme, analysis);
 	}
 
-	@Transactional
 	public RepositoryAnalysisResponse requestAnalysis(UUID repositoryId) {
 		AgentRepository repository = findRepositoryOrThrow(repositoryId);
 		readmeJpaRepository.findByRepository(repository)
 			.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "REPOSITORY_001", "README가 없는 레포지토리는 분석을 요청할 수 없습니다."));
-		RepositoryAnalysis analysis = analysisJpaRepository.findFirstByRepositoryOrderByRequestedAtDesc(repository)
-			.orElseGet(() -> analysisJpaRepository.save(RepositoryAnalysis.pending(repository)));
+		RepositoryAnalysis analysis = analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId)
+			.orElseGet(() -> {
+				UUID snapshotId = UUID.randomUUID();
+				return analysisService.requestAnalysis(repositoryId, snapshotId, null, repository.getHtmlUrl());
+			});
 		return RepositoryAnalysisResponse.from(analysis);
 	}
 
