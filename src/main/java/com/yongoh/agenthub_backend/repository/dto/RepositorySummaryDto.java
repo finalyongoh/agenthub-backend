@@ -17,6 +17,7 @@ public class RepositorySummaryDto {
 	private String name;
 	private String owner;
 	private String description;
+	private String descriptionKo;
 	private String htmlUrl;
 	private String language;
 	private List<String> topics;
@@ -35,6 +36,7 @@ public class RepositorySummaryDto {
 			repository.getName(),
 			repository.getOwner(),
 			repository.getDescription(),
+			repository.getDescriptionKo(),
 			repository.getHtmlUrl(),
 			repository.getLanguage(),
 			toTopics(repository.getTopics()),

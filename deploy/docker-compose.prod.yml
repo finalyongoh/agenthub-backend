@@ -82,6 +82,7 @@ services:
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN_FOR_APP:-}
+      GMS_API_KEY: ${GMS_API_KEY:-}
       AGENTTRACE_BASE_URL: http://agenttrace:8000
       AGENTHUB_IMAGE_DIRECTORY: /app/img
       TZ: Asia/Seoul

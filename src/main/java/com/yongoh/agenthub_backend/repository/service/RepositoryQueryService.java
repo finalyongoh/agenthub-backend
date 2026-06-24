@@ -67,6 +67,7 @@ public class RepositoryQueryService {
 					builder.like(builder.lower(root.get("owner")), likeKeyword),
 					builder.like(builder.lower(root.get("name")), likeKeyword),
 					builder.like(builder.lower(builder.coalesce(root.get("description"), "")), likeKeyword),
+					builder.like(builder.lower(builder.coalesce(root.get("descriptionKo"), "")), likeKeyword),
 					builder.like(builder.lower(builder.coalesce(root.get("readmeSummary"), "")), likeKeyword),
 					builder.like(builder.lower(builder.coalesce(root.get("topics"), "")), likeKeyword),
 					builder.like(builder.lower(builder.coalesce(root.get("language"), "")), likeKeyword),

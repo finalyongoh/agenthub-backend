@@ -44,6 +44,11 @@ agenthub:
     base-url: ${AGENTHUB_FRONTEND_BASE_URL:http://localhost:5173}
   images:
     directory: "${AGENTHUB_IMAGE_DIRECTORY:img}"
+  translation:
+    enabled: ${AGENTHUB_TRANSLATION_ENABLED:true}
+    base-url: "${AGENTHUB_TRANSLATION_BASE_URL:https://gms.ssafy.io/gmsapi/api.openai.com/v1}"
+    api-key: "${GMS_KEY:${GMS_API_KEY:}}"
+    model: "${AGENTHUB_TRANSLATION_MODEL:gpt-4o-mini}"
   auth:
     jwt:
       issuer: agenthub

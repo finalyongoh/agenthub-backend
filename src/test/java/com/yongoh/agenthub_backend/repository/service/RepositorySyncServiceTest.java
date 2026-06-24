@@ -43,6 +43,7 @@ class RepositorySyncServiceTest {
 	private final RepositoryFileTreeJpaRepository fileTreeJpaRepository = mock(RepositoryFileTreeJpaRepository.class);
 	private final RepositoryAnalysisRepository analysisRepository = mock(RepositoryAnalysisRepository.class);
 	private final RepositoryNotificationService notificationService = mock(RepositoryNotificationService.class);
+	private final DescriptionTranslationClient translationClient = mock(DescriptionTranslationClient.class);
 	private final GithubProperties properties = new GithubProperties();
 
 	private final RepositorySyncService service = new RepositorySyncService(
@@ -57,6 +58,7 @@ class RepositorySyncServiceTest {
 		fileTreeJpaRepository,
 		analysisRepository,
 		notificationService,
+		translationClient,
 		properties
 	);
 
@@ -67,6 +69,7 @@ class RepositorySyncServiceTest {
 		AgentRepository known = AgentRepository.create(repositoryDto(2L, "acme/known-agent"));
 
 		when(searchService.searchAgentRepositories(10)).thenReturn(List.of(discoveredDto));
+		when(translationClient.translateAboutToKorean(any())).thenReturn("한국어 설명");
 		when(repositoryJpaRepository.findByGithubId(1L)).thenReturn(Optional.empty());
 		when(repositoryJpaRepository.save(any(AgentRepository.class))).thenReturn(discovered);
 		when(repositoryJpaRepository.findAll(any(Specification.class), any(Pageable.class)))
@@ -77,6 +80,22 @@ class RepositorySyncServiceTest {
 		assertThat(repositories)
 			.extracting(AgentRepository::getFullName)
 			.containsExactly("acme/new-agent", "acme/known-agent");
+	}
+
+	@Test
+	void searchAndSaveCandidatesTranslatesGithubDescription() {
+		GithubRepositoryDto discoveredDto = repositoryDto(8L, "acme/translated-agent");
+		when(searchService.searchAgentRepositories(1)).thenReturn(List.of(discoveredDto));
+		when(translationClient.translateAboutToKorean("Agent repository")).thenReturn("에이전트 레포지토리");
+		when(repositoryJpaRepository.findByGithubId(8L)).thenReturn(Optional.empty());
+		when(repositoryJpaRepository.save(any(AgentRepository.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(repositoryJpaRepository.findAll(any(Specification.class), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+
+		List<AgentRepository> repositories = service.searchAndSaveCandidates(1, new SyncStatistics());
+
+		assertThat(repositories.getFirst().getDescription()).isEqualTo("Agent repository");
+		assertThat(repositories.getFirst().getDescriptionKo()).isEqualTo("에이전트 레포지토리");
 	}
 
 	@Test
@@ -165,6 +184,39 @@ class RepositorySyncServiceTest {
 		service.scoreRepositories(List.of(repository), new SyncStatistics());
 
 		assertThat(repository.getReadmeSummary()).isEqualTo("Existing summary");
+	}
+
+	@Test
+	void scoreRepositoriesUsesCleanReadmeFallbackWhenAgentTraceFailsWithoutExistingSummary() {
+		AgentRepository repository = AgentRepository.create(repositoryDto(7L, "acme/fallback-summary-agent"));
+		var readme = com.yongoh.agenthub_backend.repository.model.RepositoryReadme.create(
+			repository,
+			"README.md",
+			"readme-sha",
+			"""
+				<a href="https://example.com"><img src="https://img.shields.io/badge/status-active"></a>
+
+				# Fallback Summary Agent
+
+				Agent runtime for evaluating and orchestrating AI workflows.
+				""",
+			160,
+			false
+		);
+		RepositoryFileTree fileTree = RepositoryFileTree.create(repository, "[{\"path\":\"README.md\",\"type\":\"file\"}]", 1);
+		when(readmeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(readme));
+		when(fileTreeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(fileTree));
+		when(scorer.score(repository, readme.getContent())).thenReturn(9);
+		when(scorer.isAgentRelated(repository, readme.getContent())).thenReturn(true);
+		when(classifier.classify(readme.getContent())).thenReturn("framework");
+		when(summaryClient.summarize(repository, readme, fileTree))
+			.thenReturn(new AgentTraceSummaryClient.RepositorySummaryResult(false, null, "agenttrace failed"));
+
+		service.scoreRepositories(List.of(repository), new SyncStatistics());
+
+		assertThat(repository.getReadmeSummary()).doesNotContain("<a href");
+		assertThat(repository.getReadmeSummary()).contains("Fallback Summary Agent");
+		assertThat(repository.getReadmeSummary()).contains("Agent runtime");
 	}
 
 	private GithubRepositoryDto repositoryDto(Long id, String fullName) {
