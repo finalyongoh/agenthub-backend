@@ -90,7 +90,8 @@ public class RepositorySyncService {
 	private Specification<AgentRepository> activeRefreshCandidate() {
 		return (root, query, criteriaBuilder) -> criteriaBuilder.and(
 			criteriaBuilder.isFalse(root.get("archived")),
-			criteriaBuilder.isFalse(root.get("fork"))
+			criteriaBuilder.isFalse(root.get("fork")),
+			criteriaBuilder.isTrue(root.get("agentRelated"))
 		);
 	}
 

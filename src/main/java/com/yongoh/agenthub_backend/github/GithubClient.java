@@ -59,6 +59,30 @@ public class GithubClient {
 		return repositories;
 	}
 
+	public Optional<GithubRepositoryDto> findRepository(String fullName) {
+		if (!StringUtils.hasText(fullName) || !fullName.contains("/")) {
+			return Optional.empty();
+		}
+		String[] parts = fullName.split("/", 2);
+		return findRepository(parts[0], parts[1]);
+	}
+
+	public Optional<GithubRepositoryDto> findRepository(String owner, String repo) {
+		try {
+			Map<String, Object> response = get(URI.create("/repos/%s/%s".formatted(owner, repo)), "application/vnd.github+json", Map.class);
+			GithubRepositoryDto repository = toRepositoryDto(response);
+			if (!repository.isArchived() && !repository.isFork() && repository.getStars() >= properties.getSync().getMinStars()) {
+				return Optional.of(repository);
+			}
+			return Optional.empty();
+		} catch (GithubApiException exception) {
+			if (exception.isNotFound()) {
+				return Optional.empty();
+			}
+			throw exception;
+		}
+	}
+
 	public Optional<GithubReadmeDto> findReadme(String owner, String repo) {
 		Optional<GithubReadmeDto> primary = getReadme("/repos/%s/%s/readme".formatted(owner, repo), "README");
 		if (primary.isPresent()) {

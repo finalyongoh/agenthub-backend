@@ -34,6 +34,9 @@ public class AgentRepositoryScorer {
 
 	public boolean isAgentRelated(AgentRepository repository, String readmeMarkdown) {
 		String target = targetText(repository, readmeMarkdown);
+		if (isGeneralResourceCatalog(target) && !hasStrongAiMlAgentSignal(target)) {
+			return false;
+		}
 		int relevanceScore = 0;
 		for (String keyword : properties.getPositiveKeywords()) {
 			if (target.contains(normalize(keyword))) {
@@ -59,7 +62,7 @@ public class AgentRepositoryScorer {
 		if (repository.isFork()) {
 			relevanceScore -= 5;
 		}
-		return relevanceScore >= properties.getScoreThreshold();
+		return relevanceScore >= properties.getScoreThreshold() && hasStrongAiMlAgentSignal(target);
 	}
 
 	public boolean isAgentRelated(int score) {
@@ -140,7 +143,58 @@ public class AgentRepositoryScorer {
 		if (!containsAny(target, "test", "tests", "eval", "benchmark", "example", "docker", "quickstart")) {
 			penalty += 5;
 		}
+		if (isGeneralResourceCatalog(target) && !hasStrongAiMlAgentSignal(target)) {
+			penalty += 12;
+		}
 		return Math.min(penalty, 30);
+	}
+
+	private boolean hasStrongAiMlAgentSignal(String target) {
+		return containsAny(
+			target,
+			"ai-agent",
+			"ai agent",
+			"llm agent",
+			"agentic",
+			"autonomous agent",
+			"multi-agent",
+			"agent framework",
+			"agent orchestration",
+			"tool calling",
+			"function calling",
+			"rag",
+			"retrieval augmented generation",
+			"model context protocol",
+			"mcp",
+			"llm application",
+			"large language model",
+			"machine learning",
+			"deep learning",
+			"natural language processing",
+			"computer vision",
+			"model serving",
+			"inference engine",
+			"transformer",
+			"diffusion"
+		);
+	}
+
+	private boolean isGeneralResourceCatalog(String target) {
+		return containsAny(
+			target,
+			"awesome",
+			"roadmap",
+			"free-for-dev",
+			"free for dev",
+			"public api",
+			"public-apis",
+			"system prompt",
+			"prompts",
+			"guide",
+			"tutorial",
+			"interview",
+			"algorithm"
+		);
 	}
 
 	private String targetText(AgentRepository repository, String readmeMarkdown) {
