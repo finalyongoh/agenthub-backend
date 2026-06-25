@@ -1,5 +1,7 @@
 package com.yongoh.agenthub_backend.repository.service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +28,8 @@ import jakarta.persistence.criteria.Predicate;
 @Service
 public class RepositoryQueryService {
 	private static final int MAX_PAGE_SIZE = 15;
+	private static final Duration PENDING_ANALYSIS_TTL = Duration.ofMinutes(1);
+	private static final Duration PROCESSING_ANALYSIS_TTL = Duration.ofMinutes(30);
 
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
@@ -108,7 +112,9 @@ public class RepositoryQueryService {
 		readmeJpaRepository.findByRepository(repository)
 			.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "REPOSITORY_001", "README가 없는 레포지토리는 분석을 요청할 수 없습니다."));
 		var latestAnalysis = analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId);
-		if (latestAnalysis.isPresent() && isActiveAnalysisStatus(latestAnalysis.get().getStatus())) {
+		if (latestAnalysis.isPresent()
+			&& isActiveAnalysisStatus(latestAnalysis.get().getStatus())
+			&& !isStaleAnalysis(latestAnalysis.get())) {
 			return agentTraceAnalysisResultRepository.findByAnalysisId(latestAnalysis.get().getAnalysisId())
 				.orElseGet(() -> RepositoryAnalysisResponse.from(latestAnalysis.get()));
 		}
@@ -152,7 +158,21 @@ public class RepositoryQueryService {
 	}
 
 	private boolean isActiveAnalysisStatus(String status) {
-		return "QUEUED".equalsIgnoreCase(status) || "RUNNING".equalsIgnoreCase(status);
+		return "PENDING".equalsIgnoreCase(status)
+			|| "PROCESSING".equalsIgnoreCase(status)
+			|| "QUEUED".equalsIgnoreCase(status)
+			|| "RUNNING".equalsIgnoreCase(status);
+	}
+
+	private boolean isStaleAnalysis(RepositoryAnalysis analysis) {
+		Instant createdAt = analysis.getCreatedAt();
+		if (createdAt == null) {
+			return true;
+		}
+		Duration ttl = "PENDING".equalsIgnoreCase(analysis.getStatus())
+			? PENDING_ANALYSIS_TTL
+			: PROCESSING_ANALYSIS_TTL;
+		return createdAt.isBefore(Instant.now().minus(ttl));
 	}
 
 	private Sort sort(String sort, String order) {

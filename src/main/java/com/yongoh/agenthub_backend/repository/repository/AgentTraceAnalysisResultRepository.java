@@ -28,10 +28,12 @@ public class AgentTraceAnalysisResultRepository {
 	public Optional<RepositoryAnalysisResponse> findByAnalysisId(UUID analysisId) {
 		return query(
 			"""
-				SELECT analysis_id, repository_id, snapshot_id, status, result_json::text AS result_json,
-				       NULL AS error_message, created_at, updated_at
-				FROM agenttrace_repository_analyses
-				WHERE analysis_id = ?::uuid
+				SELECT a.analysis_id, a.repository_id, a.snapshot_id, a.status, a.result_json::text AS result_json,
+				       NULL AS error_message, a.created_at, a.updated_at,
+				       r.title AS report_title, r.body_markdown AS report_body_markdown
+				FROM agenttrace_repository_analyses a
+				LEFT JOIN analysis_reports r ON r.analysis_id = a.analysis_id AND r.lang = 'ko'
+				WHERE a.analysis_id = ?::uuid
 				LIMIT 1
 				""",
 			analysisId.toString()
@@ -41,11 +43,13 @@ public class AgentTraceAnalysisResultRepository {
 	public Optional<RepositoryAnalysisResponse> findFirstByRepositoryIdOrderByCreatedAtDesc(UUID repositoryId) {
 		return query(
 			"""
-				SELECT analysis_id, repository_id, snapshot_id, status, result_json::text AS result_json,
-				       NULL AS error_message, created_at, updated_at
-				FROM agenttrace_repository_analyses
-				WHERE repository_id = ?::uuid
-				ORDER BY created_at DESC
+				SELECT a.analysis_id, a.repository_id, a.snapshot_id, a.status, a.result_json::text AS result_json,
+				       NULL AS error_message, a.created_at, a.updated_at,
+				       r.title AS report_title, r.body_markdown AS report_body_markdown
+				FROM agenttrace_repository_analyses a
+				LEFT JOIN analysis_reports r ON r.analysis_id = a.analysis_id AND r.lang = 'ko'
+				WHERE a.repository_id = ?::uuid
+				ORDER BY a.created_at DESC
 				LIMIT 1
 				""",
 			repositoryId.toString()
@@ -72,7 +76,9 @@ public class AgentTraceAnalysisResultRepository {
 			resultSet.getString("result_json"),
 			resultSet.getString("error_message"),
 			toInstant(resultSet.getTimestamp("created_at")),
-			toInstant(resultSet.getTimestamp("updated_at"))
+			toInstant(resultSet.getTimestamp("updated_at")),
+			resultSet.getString("report_title"),
+			resultSet.getString("report_body_markdown")
 		);
 	}
 

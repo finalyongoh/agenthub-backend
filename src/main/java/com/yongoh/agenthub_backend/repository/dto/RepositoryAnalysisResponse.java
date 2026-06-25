@@ -18,6 +18,8 @@ public class RepositoryAnalysisResponse {
 	private String errorMessage;
 	private Instant createdAt;
 	private Instant updatedAt;
+	private String reportTitle;
+	private String reportBodyMarkdown;
 
 	public static RepositoryAnalysisResponse from(RepositoryAnalysis analysis) {
 		return new RepositoryAnalysisResponse(
@@ -28,7 +30,9 @@ public class RepositoryAnalysisResponse {
 			analysis.getResultJson(),
 			analysis.getErrorMessage(),
 			analysis.getCreatedAt(),
-			analysis.getUpdatedAt()
+			analysis.getUpdatedAt(),
+			null,
+			null
 		);
 	}
 }
