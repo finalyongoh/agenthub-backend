@@ -47,7 +47,8 @@ class AgentRepositoryScorerTest {
 			""";
 		int score = scorer.score(repository, readme);
 
-		assertThat(score).isGreaterThanOrEqualTo(50);
+		assertThat(score).isGreaterThanOrEqualTo(80);
+		assertThat(score).isLessThanOrEqualTo(AgentRepositoryScorer.MAX_AGENT_SCORE);
 		assertThat(scorer.isAgentRelated(repository, readme)).isTrue();
 	}
 
@@ -79,6 +80,39 @@ class AgentRepositoryScorerTest {
 
 		String readme = "A curated awesome list of resources, guides, tutorials, and public APIs.";
 
+		assertThat(scorer.isAgentRelated(repository, readme)).isFalse();
+		assertThat(scorer.score(repository, readme)).isLessThan(35);
+	}
+
+	@Test
+	void offTopicProductivityRepositoryDoesNotGetHighScoreFromIncidentalKeywords() {
+		AgentRepository repository = AgentRepository.create(new GithubRepositoryDto(
+			4L,
+			"owner/front-end-checklist",
+			"owner",
+			"front-end-checklist",
+			"Checklist for frontend developers with AI translated docs",
+			"https://github.com/owner/front-end-checklist",
+			null,
+			null,
+			"main",
+			"JavaScript",
+			List.of("frontend", "checklist"),
+			50_000,
+			5_000,
+			200,
+			20,
+			"MIT",
+			Instant.now(),
+			Instant.now(),
+			Instant.now(),
+			false,
+			false
+		));
+
+		String readme = "A guide, tutorial, and checklist for frontend productivity. It focuses on HTML, CSS, accessibility, and deployment review items.";
+
+		assertThat(scorer.score(repository, readme)).isLessThan(35);
 		assertThat(scorer.isAgentRelated(repository, readme)).isFalse();
 	}
 

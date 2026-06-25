@@ -59,8 +59,7 @@ public class RepositoryQueryService {
 		Specification<AgentRepository> specification = (root, query, builder) -> {
 			Predicate predicate = builder.and(
 				builder.isFalse(root.get("archived")),
-				builder.isFalse(root.get("fork")),
-				builder.isTrue(root.get("agentRelated"))
+				builder.isFalse(root.get("fork"))
 			);
 			if (category != null && !category.isBlank()) {
 				predicate = builder.and(predicate, builder.equal(root.get("agentCategory"), category));

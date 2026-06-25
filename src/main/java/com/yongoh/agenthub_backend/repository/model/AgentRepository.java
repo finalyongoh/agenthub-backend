@@ -28,6 +28,8 @@ import lombok.NoArgsConstructor;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AgentRepository {
+	private static final int MAX_AGENT_SCORE = 90;
+
 	@Id
 	@Column(nullable = false, updatable = false)
 	private UUID id;
@@ -159,10 +161,18 @@ public class AgentRepository {
 	}
 
 	public void updateScoring(int agentScore, boolean agentRelated, String agentCategory, String readmeSummary) {
-		this.agentScore = agentScore;
+		this.agentScore = normalizeAgentScore(agentScore);
 		this.agentRelated = agentRelated;
 		this.agentCategory = agentCategory;
 		this.readmeSummary = readmeSummary;
+	}
+
+	public int getAgentScore() {
+		return normalizeAgentScore(agentScore);
+	}
+
+	private int normalizeAgentScore(int value) {
+		return Math.max(0, Math.min(MAX_AGENT_SCORE, value));
 	}
 
 	@PrePersist

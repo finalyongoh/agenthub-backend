@@ -20,6 +20,7 @@ import com.yongoh.agenthub_backend.community.model.DiscussionLike;
 import com.yongoh.agenthub_backend.community.model.Post;
 import com.yongoh.agenthub_backend.community.model.PostComment;
 import com.yongoh.agenthub_backend.community.model.PostLike;
+import com.yongoh.agenthub_backend.community.model.PostStatus;
 import com.yongoh.agenthub_backend.community.model.RepositoryDiscussion;
 import com.yongoh.agenthub_backend.community.repository.DiscussionCommentRepository;
 import com.yongoh.agenthub_backend.community.repository.DiscussionLikeRepository;
@@ -82,17 +83,38 @@ public class CommunityService {
 
 	@Transactional(readOnly = true)
 	public List<PostDto> findPosts() {
-		return postRepository.findAllByOrderByCreatedAtDesc()
+		return postRepository.findByStatusOrderByCreatedAtDesc(PostStatus.ACTIVE)
 			.stream()
 			.map(PostDto::from)
 			.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public PostDto findPostDetail(UUID postId) {
+		return PostDto.from(findPost(postId));
+	}
+
+	@Transactional
+	public PostDto updatePost(UUID userId, UUID postId, CommunityCreateRequest request) {
+		return updatePost(userId, postId, request, null);
+	}
+
+	@Transactional
+	public PostDto updatePost(UUID userId, UUID postId, CommunityCreateRequest request, MultipartFile image) {
+		validateRequest(request);
+		findActiveUser(userId);
+		Post post = findPost(postId);
+		validateOwner(userId, post.getUser().getId(), "작성자만 수정할 수 있습니다.");
+		String imageFilename = postImageStorageService.store(image);
+		post.update(request.getTitle().trim(), request.getBody().trim(), imageFilename);
+		return PostDto.from(post);
 	}
 
 	@Transactional
 	public PostDto deletePost(UUID userId, UUID postId) {
 		findActiveUser(userId);
 		Post post = findPost(postId);
-		validateOwner(userId, post.getUser().getId());
+		validateOwner(userId, post.getUser().getId(), "작성자만 삭제할 수 있습니다.");
 		post.delete();
 		return PostDto.from(post);
 	}
@@ -179,7 +201,7 @@ public class CommunityService {
 		findActiveUser(userId);
 		validateCollectedRepository(repositoryId);
 		RepositoryDiscussion discussion = findDiscussion(repositoryId, discussionId);
-		validateOwner(userId, discussion.getUser().getId());
+		validateOwner(userId, discussion.getUser().getId(), "작성자만 삭제할 수 있습니다.");
 		discussion.delete();
 		return RepositoryDiscussionDto.from(discussion);
 	}
@@ -250,8 +272,12 @@ public class CommunityService {
 	}
 
 	private Post findPost(UUID postId) {
-		return postRepository.findById(postId)
+		Post post = postRepository.findById(postId)
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "게시글을 찾을 수 없습니다."));
+		if (post.getStatus() != PostStatus.ACTIVE) {
+			throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_404", "게시글을 찾을 수 없습니다.");
+		}
+		return post;
 	}
 
 	private RepositoryDiscussion findDiscussion(UUID repositoryId, UUID discussionId) {
@@ -270,9 +296,9 @@ public class CommunityService {
 		}
 	}
 
-	private void validateOwner(UUID requestUserId, UUID ownerUserId) {
+	private void validateOwner(UUID requestUserId, UUID ownerUserId, String message) {
 		if (!requestUserId.equals(ownerUserId)) {
-			throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_403", "작성자만 삭제할 수 있습니다.");
+			throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_403", message);
 		}
 	}
 }

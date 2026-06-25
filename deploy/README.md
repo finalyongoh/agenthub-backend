@@ -80,7 +80,8 @@ Deploy with the explicit environment file:
 
 ```bash
 docker compose \
-  --env-file agenthub-backend/deploy/.env \
-  -f agenthub-backend/deploy/docker-compose.prod.yml \
+  --project-directory /home/wolyong/deploy/agenthub \
+  --env-file /home/wolyong/deploy/agenthub/agenthub-backend/deploy/.env \
+  -f /home/wolyong/deploy/agenthub/agenthub-backend/deploy/docker-compose.prod.yml \
   up -d --build
 ```

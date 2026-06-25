@@ -12,6 +12,10 @@ import com.yongoh.agenthub_backend.repository.model.AgentRepository;
 
 @Service
 public class AgentRepositoryScorer {
+	public static final int MAX_AGENT_SCORE = 90;
+	private static final int TRUSTED_AI_REPOSITORY_BASE_SCORE = 35;
+	private static final int WEAK_RELEVANCE_BASE_SCORE = 10;
+
 	private final AgentScoringProperties properties;
 
 	public AgentRepositoryScorer(AgentScoringProperties properties) {
@@ -20,8 +24,18 @@ public class AgentRepositoryScorer {
 
 	public int score(AgentRepository repository, String readmeMarkdown) {
 		String target = targetText(repository, readmeMarkdown);
+		String identity = targetText(repository, "");
 
-		int score = 0;
+		if (isOffTopicProductivityRepository(identity)) {
+			return clamp(adoptionScore(repository) - riskPenalty(repository, target), 0, 30);
+		}
+		if (isGeneralResourceCatalog(identity) && !hasStrongAiMlAgentSignal(identity) && !hasImplementationSignal(target)) {
+			return clamp(adoptionScore(repository) - riskPenalty(repository, target), 0, 30);
+		}
+
+		int score = hasStrongAiMlAgentSignal(target)
+			? TRUSTED_AI_REPOSITORY_BASE_SCORE
+			: WEAK_RELEVANCE_BASE_SCORE;
 		score += capabilityDepthScore(target);
 		score += evaluationEvidenceScore(target);
 		score += reproducibilityScore(target);
@@ -29,7 +43,7 @@ public class AgentRepositoryScorer {
 		score += adoptionScore(repository);
 		score -= riskPenalty(repository, target);
 
-		return clamp(score, 0, 100);
+		return clamp(score, 0, MAX_AGENT_SCORE);
 	}
 
 	public boolean isAgentRelated(AgentRepository repository, String readmeMarkdown) {
@@ -92,12 +106,12 @@ public class AgentRepositoryScorer {
 
 	private int evaluationEvidenceScore(String target) {
 		int score = 0;
-		score += containsAny(target, "benchmark", "benchmarks", "eval", "evaluation", "harness") ? 8 : 0;
-		score += containsAny(target, "swe-bench", "swebench", "webarena", "agentbench", "toolbench", "tau-bench", "τ-bench", "gaia") ? 7 : 0;
-		score += containsAny(target, "success rate", "solve rate", "pass rate", "accuracy", "win rate", "score", "leaderboard") ? 6 : 0;
-		score += containsAny(target, "results.json", "result.json", "results/", "experiments/", "metrics") ? 5 : 0;
+		score += containsAny(target, "benchmark", "benchmarks", "eval", "evaluation", "harness") ? 5 : 0;
+		score += containsAny(target, "swe-bench", "swebench", "webarena", "agentbench", "toolbench", "tau-bench", "τ-bench", "gaia") ? 4 : 0;
+		score += containsAny(target, "success rate", "solve rate", "pass rate", "accuracy", "win rate", "score", "leaderboard") ? 4 : 0;
+		score += containsAny(target, "results.json", "result.json", "results/", "experiments/", "metrics") ? 3 : 0;
 		score += containsAny(target, "pytest", "vitest", "jest", "unittest", "integration test", "e2e") ? 4 : 0;
-		return Math.min(score, 30);
+		return Math.min(score, 20);
 	}
 
 	private int reproducibilityScore(String target) {
@@ -108,7 +122,7 @@ public class AgentRepositoryScorer {
 		score += containsAny(target, "run benchmark", "run eval", "make benchmark", "make eval", "npm test", "pytest") ? 5 : 0;
 		score += containsAny(target, "example", "examples/", "sample", "demo") ? 3 : 0;
 		score += containsAny(target, "seed", "config", "yaml", "toml") ? 2 : 0;
-		return Math.min(score, 20);
+		return Math.min(score, 15);
 	}
 
 	private int operationalQualityScore(String target) {
@@ -156,7 +170,7 @@ public class AgentRepositoryScorer {
 		if (isGeneralResourceCatalog(target) && !hasStrongAiMlAgentSignal(target)) {
 			penalty += 12;
 		}
-		return Math.min(penalty, 30);
+		return Math.min(penalty, 20);
 	}
 
 	private boolean hasStrongAiMlAgentSignal(String target) {

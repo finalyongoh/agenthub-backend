@@ -81,6 +81,14 @@ public class Post {
 		this.status = PostStatus.DELETED;
 	}
 
+	public void update(String title, String body, String imageFilename) {
+		this.title = title;
+		this.body = body;
+		if (imageFilename != null) {
+			this.imageFilename = imageFilename;
+		}
+	}
+
 	@PrePersist
 	void prePersist() {
 		Instant now = Instant.now();

@@ -59,6 +59,28 @@ services:
       retries: 5
       start_period: 20s
 
+  agenttrace-worker:
+    container_name: agenttrace-worker
+    build:
+      context: ./agenttrace
+    command: ["uv", "run", "agenttrace-worker"]
+    environment:
+      OPENAI_API_KEY: ${GMS_API_KEY}
+      OPENAI_API_BASE: https://gms.ssafy.io/gmsapi/api.openai.com/v1
+      AGENTTRACE_SUMMARY_MODEL: gpt-4o-mini
+      DATABASE_URL: postgresql://agenthub_user:${POSTGRES_PASSWORD}@agenthub-postgres:5432/agenthub
+      LANGSMITH_TRACING: "false"
+      TZ: Asia/Seoul
+    depends_on:
+      agenthub-postgres:
+        condition: service_healthy
+      agenttrace:
+        condition: service_healthy
+    networks:
+      - agenthub_internal
+    restart: unless-stopped
+    mem_limit: 768m
+
   agenthub-backend:
     container_name: agenthub-backend
     build:
