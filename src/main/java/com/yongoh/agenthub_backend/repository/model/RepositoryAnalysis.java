@@ -15,7 +15,7 @@ import java.time.Instant;
 public class RepositoryAnalysis {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id")
+    @Column(name = "analysis_id")
     private UUID analysisId;
 
     @Column(name = "repository_id", nullable = false)
@@ -24,13 +24,14 @@ public class RepositoryAnalysis {
     @Column(name = "snapshot_id")
     private UUID snapshotId;
 
-    @Column(nullable = false)
+    @Column(length = 40, nullable = false)
     private String status;
 
     @Column(columnDefinition = "jsonb")
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     private String resultJson;
 
+    @Column(columnDefinition = "TEXT")
     private String errorMessage;
 
     @Column(nullable = false, updatable = false)

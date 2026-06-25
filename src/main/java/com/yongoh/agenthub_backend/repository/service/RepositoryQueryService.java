@@ -16,6 +16,7 @@ import com.yongoh.agenthub_backend.repository.dto.RepositoryListResponse;
 import com.yongoh.agenthub_backend.repository.dto.RepositorySummaryDto;
 import com.yongoh.agenthub_backend.repository.model.AgentRepository;
 import com.yongoh.agenthub_backend.repository.model.RepositoryAnalysis;
+import com.yongoh.agenthub_backend.repository.repository.AgentTraceAnalysisResultRepository;
 import com.yongoh.agenthub_backend.repository.repository.AgentRepositoryJpaRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryAnalysisRepository;
 import com.yongoh.agenthub_backend.repository.repository.RepositoryReadmeJpaRepository;
@@ -29,17 +30,20 @@ public class RepositoryQueryService {
 	private final AgentRepositoryJpaRepository repositoryJpaRepository;
 	private final RepositoryReadmeJpaRepository readmeJpaRepository;
 	private final RepositoryAnalysisRepository analysisRepository;
+	private final AgentTraceAnalysisResultRepository agentTraceAnalysisResultRepository;
 	private final AnalysisService analysisService;
 
 	public RepositoryQueryService(
 		AgentRepositoryJpaRepository repositoryJpaRepository,
 		RepositoryReadmeJpaRepository readmeJpaRepository,
 		RepositoryAnalysisRepository analysisRepository,
+		AgentTraceAnalysisResultRepository agentTraceAnalysisResultRepository,
 		AnalysisService analysisService
 	) {
 		this.repositoryJpaRepository = repositoryJpaRepository;
 		this.readmeJpaRepository = readmeJpaRepository;
 		this.analysisRepository = analysisRepository;
+		this.agentTraceAnalysisResultRepository = agentTraceAnalysisResultRepository;
 		this.analysisService = analysisService;
 	}
 
@@ -103,17 +107,52 @@ public class RepositoryQueryService {
 		AgentRepository repository = findRepositoryOrThrow(repositoryId);
 		readmeJpaRepository.findByRepository(repository)
 			.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "REPOSITORY_001", "README가 없는 레포지토리는 분석을 요청할 수 없습니다."));
-		RepositoryAnalysis analysis = analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId)
-			.orElseGet(() -> {
-				UUID snapshotId = UUID.randomUUID();
-				return analysisService.requestAnalysis(repositoryId, snapshotId, null, repository.getHtmlUrl());
-			});
+		var latestAnalysis = analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId);
+		if (latestAnalysis.isPresent() && isActiveAnalysisStatus(latestAnalysis.get().getStatus())) {
+			return agentTraceAnalysisResultRepository.findByAnalysisId(latestAnalysis.get().getAnalysisId())
+				.orElseGet(() -> RepositoryAnalysisResponse.from(latestAnalysis.get()));
+		}
+		UUID snapshotId = UUID.randomUUID();
+		RepositoryAnalysis analysis = analysisService.requestAnalysis(repositoryId, snapshotId, null, repository.getHtmlUrl());
 		return RepositoryAnalysisResponse.from(analysis);
+	}
+
+	@Transactional(readOnly = true)
+	public RepositoryAnalysisResponse findLatestAnalysis(UUID repositoryId) {
+		findRepositoryOrThrow(repositoryId);
+		
+		var backendResult = analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId)
+			.map(analysis -> agentTraceAnalysisResultRepository.findByAnalysisId(analysis.getAnalysisId())
+				.orElseGet(() -> RepositoryAnalysisResponse.from(analysis)));
+				
+		var traceResult = agentTraceAnalysisResultRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId);
+		
+		if (backendResult.isEmpty() && traceResult.isEmpty()) {
+			throw new ApiException(HttpStatus.NOT_FOUND, "ANALYSIS_404", "분석 결과를 찾을 수 없습니다.");
+		}
+		if (backendResult.isEmpty()) {
+			return traceResult.get();
+		}
+		if (traceResult.isEmpty()) {
+			return backendResult.get();
+		}
+		
+		var backendTime = backendResult.get().getCreatedAt();
+		var traceTime = traceResult.get().getCreatedAt();
+		
+		if (backendTime != null && traceTime != null && traceTime.isAfter(backendTime)) {
+			return traceResult.get();
+		}
+		return backendResult.get();
 	}
 
 	private AgentRepository findRepositoryOrThrow(UUID repositoryId) {
 		return repositoryJpaRepository.findById(repositoryId)
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "REPOSITORY_404", "레포지토리를 찾을 수 없습니다."));
+	}
+
+	private boolean isActiveAnalysisStatus(String status) {
+		return "QUEUED".equalsIgnoreCase(status) || "RUNNING".equalsIgnoreCase(status);
 	}
 
 	private Sort sort(String sort, String order) {
