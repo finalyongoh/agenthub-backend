@@ -25,7 +25,7 @@ public class AnalysisService {
         RepositoryAnalysis analysis = RepositoryAnalysis.builder()
             .repositoryId(repositoryId)
             .snapshotId(snapshotId)
-            .status("QUEUED")
+            .status("PENDING")
             .build();
         return repository.save(analysis);
     }
@@ -34,6 +34,8 @@ public class AnalysisService {
         RepositoryAnalysis saved = self.saveQueuedAnalysis(repositoryId, snapshotId);
         try {
             client.triggerAnalysis(saved.getAnalysisId(), repositoryId, snapshotId, commitSha, githubUrl);
+            self.updateStatus(saved.getAnalysisId(), "PROCESSING", null, null);
+            saved.setStatus("PROCESSING");
         } catch (Exception e) {
             self.updateStatus(saved.getAnalysisId(), "FAILED", null, e.getMessage());
             throw e;

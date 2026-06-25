@@ -225,7 +225,7 @@ public class RepositorySyncService {
 			analysisRepository.save(RepositoryAnalysis.builder()
 				.repositoryId(repository.getId())
 				.snapshotId(fileTreeId)
-				.status("QUEUED")
+				.status("PENDING")
 				.build());
 		}
 	}

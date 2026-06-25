@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,16 +43,16 @@ class RepositoryQueryServiceTest {
 		UUID repositoryId = UUID.randomUUID();
 		AgentRepository repository = mockRepository(repositoryId, "https://github.com/acme/agent");
 		RepositoryAnalysis completed = analysis(repositoryId, "COMPLETED");
-		RepositoryAnalysis queued = analysis(repositoryId, "QUEUED");
+		RepositoryAnalysis processing = analysis(repositoryId, "PROCESSING");
 		when(repositoryJpaRepository.findById(repositoryId)).thenReturn(Optional.of(repository));
 		when(readmeJpaRepository.findByRepository(repository)).thenReturn(Optional.of(mock(RepositoryReadme.class)));
 		when(analysisRepository.findFirstByRepositoryIdOrderByCreatedAtDesc(repositoryId)).thenReturn(Optional.of(completed));
 		when(agentTraceAnalysisResultRepository.findByAnalysisId(completed.getAnalysisId())).thenReturn(Optional.empty());
-		when(analysisService.requestAnalysis(any(), any(), any(), any())).thenReturn(queued);
+		when(analysisService.requestAnalysis(any(), any(), any(), any())).thenReturn(processing);
 
 		var response = service.requestAnalysis(repositoryId);
 
-		assertThat(response.getStatus()).isEqualTo("QUEUED");
+		assertThat(response.getStatus()).isEqualTo("PROCESSING");
 		verify(analysisService).requestAnalysis(eq(repositoryId), any(UUID.class), isNull(), eq("https://github.com/acme/agent"));
 	}
 
@@ -75,13 +76,15 @@ class RepositoryQueryServiceTest {
 	void requestAnalysisReturnsAgentTraceResultWhenActiveBackendRowAlreadyCompletedThere() {
 		UUID repositoryId = UUID.randomUUID();
 		AgentRepository repository = mockRepository(repositoryId, "https://github.com/acme/agent");
-		RepositoryAnalysis queued = analysis(repositoryId, "QUEUED");
+		RepositoryAnalysis queued = analysis(repositoryId, "PENDING");
 		RepositoryAnalysisResponse completed = new RepositoryAnalysisResponse(
 			queued.getAnalysisId(),
 			repositoryId,
 			queued.getSnapshotId(),
 			"completed",
 			"{\"summary\":\"done\"}",
+			null,
+			null,
 			null,
 			null,
 			null
@@ -111,6 +114,8 @@ class RepositoryQueryServiceTest {
 			.repositoryId(repositoryId)
 			.snapshotId(UUID.randomUUID())
 			.status(status)
+			.createdAt(Instant.now())
+			.updatedAt(Instant.now())
 			.build();
 	}
 }

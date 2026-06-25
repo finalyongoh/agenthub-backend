@@ -15,7 +15,7 @@ import java.time.Instant;
 public class RepositoryAnalysis {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "analysis_id")
+    @Column(name = "id")
     private UUID analysisId;
 
     @Column(name = "repository_id", nullable = false)
@@ -34,6 +34,9 @@ public class RepositoryAnalysis {
     @Column(columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(name = "requested_at", nullable = false, updatable = false)
+    private Instant requestedAt;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -42,8 +45,10 @@ public class RepositoryAnalysis {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = Instant.now();
-        updatedAt = Instant.now();
+        Instant now = Instant.now();
+        if (requestedAt == null) requestedAt = now;
+        createdAt = now;
+        updatedAt = now;
     }
 
     @PreUpdate

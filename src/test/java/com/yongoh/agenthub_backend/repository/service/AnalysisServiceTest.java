@@ -45,7 +45,7 @@ class AnalysisServiceTest {
         assertThat(analysis.getAnalysisId()).isNotNull();
         assertThat(analysis.getRepositoryId()).isEqualTo(repositoryId);
         assertThat(analysis.getSnapshotId()).isEqualTo(snapshotId);
-        assertThat(analysis.getStatus()).isEqualTo("QUEUED");
+        assertThat(analysis.getStatus()).isEqualTo("PROCESSING");
         assertThat(analysis.getCreatedAt()).isNotNull();
         assertThat(analysis.getUpdatedAt()).isNotNull();
 
@@ -61,7 +61,7 @@ class AnalysisServiceTest {
         // Fetch from DB to confirm persistence
         RepositoryAnalysis persisted = repositoryAnalysisRepository.findById(analysis.getAnalysisId()).orElse(null);
         assertThat(persisted).isNotNull();
-        assertThat(persisted.getStatus()).isEqualTo("QUEUED");
+        assertThat(persisted.getStatus()).isEqualTo("PROCESSING");
 
         // 2. Update status to COMPLETED
         String resultJson = "{\"result\":\"success\"}";
