@@ -4,6 +4,7 @@ build/
 docker_data/
 img/*
 !img/.gitkeep
+agenthub-local-*.sql
 .DS_Store
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/

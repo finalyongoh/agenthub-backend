@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,6 +56,34 @@ public class CommunityController {
 	@GetMapping("/api/posts")
 	public List<PostDto> findPosts() {
 		return communityService.findPosts();
+	}
+
+	@GetMapping("/api/posts/{postId}")
+	public PostDto findPost(@PathVariable UUID postId) {
+		return communityService.findPostDetail(postId);
+	}
+
+	@PutMapping(value = "/api/posts/{postId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public PostDto updatePost(
+		@AuthenticationPrincipal AuthenticatedUser user,
+		@PathVariable UUID postId,
+		@RequestBody CommunityCreateRequest request
+	) {
+		return communityService.updatePost(user.getId(), postId, request);
+	}
+
+	@PutMapping(value = "/api/posts/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public PostDto updatePostWithImage(
+		@AuthenticationPrincipal AuthenticatedUser user,
+		@PathVariable UUID postId,
+		@RequestParam String title,
+		@RequestParam String body,
+		@RequestParam(required = false) MultipartFile image
+	) {
+		CommunityCreateRequest request = new CommunityCreateRequest();
+		request.setTitle(title);
+		request.setBody(body);
+		return communityService.updatePost(user.getId(), postId, request, image);
 	}
 
 	@DeleteMapping("/api/posts/{postId}")
