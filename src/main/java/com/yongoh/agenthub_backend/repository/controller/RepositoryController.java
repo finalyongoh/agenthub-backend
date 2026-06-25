@@ -64,6 +64,11 @@ public class RepositoryController {
 		return repositoryQueryService.requestAnalysis(repositoryId);
 	}
 
+	@GetMapping("/api/repositories/{repositoryId}/analysis")
+	public RepositoryAnalysisResponse findLatestAnalysis(@PathVariable UUID repositoryId) {
+		return repositoryQueryService.findLatestAnalysis(repositoryId);
+	}
+
 	@PostMapping("/api/repositories/{repositoryId}/bookmark")
 	public RepositoryBookmarkDto bookmarkRepository(
 		@AuthenticationPrincipal AuthenticatedUser user,
