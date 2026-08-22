@@ -9,7 +9,7 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_USER: agenthub_user
-      POSTGRES_PASSWORD: agenthub_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agenthub_password}
       POSTGRES_DB: agenthub
       TZ: Asia/Seoul
     volumes:

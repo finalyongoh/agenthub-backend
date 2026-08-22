@@ -15,7 +15,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/agenthub
     username: agenthub_user
-    password: agenthub_password
+    password: ${POSTGRES_PASSWORD:agenthub_password}
     driver-class-name: org.postgresql.Driver
 
   # JPA 설정 (개발 초기에는 테이블 자동 생성을 위해 update 권장)
